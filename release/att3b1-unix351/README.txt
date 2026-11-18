@@ -205,8 +205,9 @@ Credits and licenses
 - glib: LGPL 2.1, bin/LICENSE-glib.txt.
   - macOS: glib 2.90.1 with pcre2 10.49 (bin/LICENSE-pcre2.txt).
   - Linux: AlmaLinux 9's glib 2.68.4 with pcre 8.44 (bin/LICENSE-pcre.txt).
-  - Windows: Fedora 43's glib 2.86 with pcre2, libintl, win-iconv and
-    zlib (bin/windows-x86_64/licenses).
+  - Windows: Fedora 43's glib 2.86.5 with pcre2 10.48, libintl 0.25.1
+    (LGPL 2.1), win-iconv 0.0.10 (public domain) and zlib 1.3.2
+    (bin/windows-x86_64/licenses).
 - The software on the disk comes from the UNIX PC archives: THE STORE!,
   the 2008 mirror of the 3B1 archive, and the disk images of Arnold
   Robbins (https://www.skeeve.com/3b1/), Alain Knaff and the VCF.
