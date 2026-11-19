@@ -8,7 +8,10 @@
 #   ZOOM=2 ./run.sh          each 3B1 pixel 2x2 (1440x696), 3 for 3x3 ...;
 #                            default 1: no zoom (720x348)
 #   COLOR=white ./run.sh     green (default), white or amber screen
-#   FLOPPY=file ./run.sh     a floppy image for the drive (F11 puts it in
+#   MOUSE=grab ./run.sh      F10 grabs the mouse for the 3B1 and lets it go;
+#                            default seamless: the 3B1's pointer follows
+#                            yours over the window, with no grab
+#   FLOPPY=file ./run.sh    a floppy image for the drive (F11 puts it in
 #                            and takes it out)
 #   HD2=file ./run.sh        a second hard disk image
 #   NET=none ./run.sh        no network: the Ethernet board with no cable
@@ -58,6 +61,12 @@ green)	R=0x33 G=0xFF B=0x66 ;;
 *)	echo "run.sh: COLOR must be green, white or amber (got $COLOR)" >&2
 	exit 1 ;;
 esac
+case "${MOUSE:-seamless}" in
+seamless)	SEAMLESS=true ;;
+grab)	SEAMLESS=false ;;
+*)	echo "run.sh: MOUSE must be seamless or grab (got $MOUSE)" >&2
+	exit 1 ;;
+esac
 for f in "$DISK" ${FLOPPY:+"$FLOPPY"} ${HD2:+"$HD2"}; do
 	[ -f "$f" ] && continue
 	echo "run.sh: no file $f" >&2
@@ -95,6 +104,8 @@ cat > .freebee.toml <<EOF
 	socket = "freebee.sock"
 [cpu]
 	turbo = $TURBO
+[mouse]
+	seamless = $SEAMLESS
 [memory]
 	base_memory = 2048
 	extended_memory = 2048

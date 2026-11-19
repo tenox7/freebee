@@ -31,8 +31,8 @@ On a Mac, Alt is the Option key.
 The Office is the 3B1's desktop: a window with a list of programs.
 - Up and Down move through the list. Or type the first letter of a name
   to jump to it: u jumps to "UNIX System".
-- Alt+Return opens the item. Or click it with the mouse (press F10 first,
-  so the 3B1 gets the mouse).
+- Alt+Return opens the item. Or click it with the mouse: over the window,
+  the 3B1's pointer follows yours.
 - Alt+Esc closes the program, form or window you are in.
 - PageUp shows help for the item or program.
 - The bottom line of the screen shows what F1 to F8 do right now.
@@ -85,22 +85,26 @@ The 3B1 keyboard has keys a PC keyboard lacks. On a Mac, Alt is Option.
   Pause               Reset/Break
   keypad 7 8 4 1 3    Print, Clear/Refresh, Beg, Prev, Next
 
-  F10                 grabs the mouse for the 3B1, and lets it go
-  F11                 puts the floppy in, and takes it out
+  F10                 only with MOUSE=grab (see below): grabs the mouse
+                      for the 3B1, and lets it go
+  F11                puts the floppy in, and takes it out
   Alt+F12             quits FreeBee
 
 Ctrl: the disk has the caps-lock/cntrl driver. Caps Lock and left Ctrl
 are Ctrl. Right Ctrl is Caps Lock.
 
 
-Speed and screen
-----------------
+Speed, screen and mouse
+-----------------------
 
 - ./run.sh 4x: the CPU is 4 times as fast as a real 3B1. 1x to 32x, and
   10x if you say nothing. The clock always keeps real time.
 - ZOOM=2 ./run.sh shows each pixel as 2x2 (1440x696). ZOOM=3 for 3x3.
 - COLOR=white ./run.sh or COLOR=amber ./run.sh: another screen color.
-- Windows: run.cmd 4x, and "set ZOOM=2" or "set COLOR=amber" before it.
+- The mouse: over the window, the 3B1's pointer follows yours. There is
+  no grab. MOUSE=grab ./run.sh gives the old way: F10 grabs the mouse
+  for the 3B1, and F10 again lets it go.- Windows: run.cmd 4x, and "set ZOOM=2", "set COLOR=amber" or
+  "set MOUSE=grab" before it.
 
 
 Network

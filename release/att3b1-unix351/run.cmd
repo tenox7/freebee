@@ -6,6 +6,9 @@ rem   run.cmd 4x           CPU speed: 1x is a real 3B1 (10 MHz), up to 32x;
 rem                        default 10x. The clock stays real
 rem   set ZOOM=2           each 3B1 pixel 2x2 (1440x696); default 1: no zoom
 rem   set COLOR=white      green (default), white or amber screen
+rem   set MOUSE=grab       F10 grabs the mouse for the 3B1 and lets it go;
+rem                        default seamless: the 3B1's pointer follows yours
+rem                        over the window, with no grab
 rem   set FLOPPY=file      a floppy image for the drive (F11 puts it in and
 rem                        takes it out)
 rem   set HD2=file         a second hard disk image
@@ -48,6 +51,14 @@ if /i "%COLOR%"=="amber" (
 	set G=0xB0
 	set B=0x00
 )
+if "%MOUSE%"=="" set MOUSE=seamless
+set SEAMLESS=
+if /i "%MOUSE%"=="seamless" set SEAMLESS=true
+if /i "%MOUSE%"=="grab" set SEAMLESS=false
+if "%SEAMLESS%"=="" (
+	echo run.cmd: MOUSE must be seamless or grab
+	exit /b 1
+)
 rem FreeBee reads .freebee.toml. run.cmd writes it at every start: change
 rem the variables, not that file. 'quotes' keep the backslashes of paths.
 >.freebee.toml echo # made by run.cmd - edit run.cmd, not this file
@@ -68,6 +79,8 @@ rem the variables, not that file. 'quotes' keep the backslashes of paths.
 >>.freebee.toml echo rom_15c = 'roms\15c.bin'
 >>.freebee.toml echo [cpu]
 >>.freebee.toml echo turbo = %N%
+>>.freebee.toml echo [mouse]
+>>.freebee.toml echo seamless = %SEAMLESS%
 >>.freebee.toml echo [memory]
 >>.freebee.toml echo base_memory = 2048
 >>.freebee.toml echo extended_memory = 2048
