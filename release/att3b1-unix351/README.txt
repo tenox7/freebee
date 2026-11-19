@@ -80,6 +80,8 @@ The 3B1 keyboard has keys a PC keyboard lacks. On a Mac, Alt is Option.
   Insert              Cmd
   Home, End           Home, End
   arrows              arrows
+  Shift+Up, Down      Roll Up, Roll Down: scroll a list or a text by one
+                      line (the mouse wheel does this too)
   F1 to F8            the soft keys: the bottom line shows what they do
   F9                  Suspd: the list of open windows
   Pause               Reset/Break
@@ -103,7 +105,11 @@ Speed, screen and mouse
 - COLOR=white ./run.sh or COLOR=amber ./run.sh: another screen color.
 - The mouse: over the window, the 3B1's pointer follows yours. There is
   no grab. MOUSE=grab ./run.sh gives the old way: F10 grabs the mouse
-  for the 3B1, and F10 again lets it go.- Windows: run.cmd 4x, and "set ZOOM=2", "set COLOR=amber" or
+  for the 3B1, and F10 again lets it go.
+- The mouse wheel scrolls a window that has scroll arrows on its right
+  edge, such as the Office, like a click on the arrows. Point at the
+  window first. In a shell window the wheel does nothing.
+- Windows: run.cmd 4x, and "set ZOOM=2", "set COLOR=amber" or
   "set MOUSE=grab" before it.
 
 
