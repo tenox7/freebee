@@ -143,6 +143,17 @@ From the 3B1:
 - The telnet client works on the screen, not on the serial port.
 - ftp works anywhere.
 
+The web: Archaic, a small web browser, shows the web pages that WRP
+(the Web Rendering Proxy, https://github.com/tenox7/wrp) draws on your
+computer.
+1. Start wrp on your computer. It uses port 8080, and the 3B1 finds it
+   at 10.0.2.2:8080.
+2. Open "Archaic Web Browser" in the Office, or type archaic in a UNIX
+   System window.
+3. Click the address box, type an address with https:// and press
+   Return. Then click the links. PageUp (Help) in the Office lists the
+   keys.
+
 NET=none ./run.sh keeps the Ethernet board but pulls its cable out.
 On Windows: set NET=none, then run.cmd.
 
@@ -193,6 +204,9 @@ UNIX System V 3.51m with Fix Disk 2.0, and 187 installed packages:
 - Over 80 games in /usr/games: Rogue, NetHack 3.1.3, Hack, Larn, Moria,
   Omega, Adventure, Dungeon, Empire, Xconq, Tetrix, Pacman, gnuchess,
   Mahjongg, Backgammon, Star Trek and more.
+- Made in 2026 for this kit: Tenox Games (2048, Bubble Breaker, Falling
+  Blocks, Snake and Sokoban, in the Office) and Archaic, a web browser
+  (see Network). Their source is in /usr/local/src.
 
 Known limits:
 - File-it! is not installed: it needs your own serial number and key.
@@ -222,6 +236,8 @@ Credits and licenses
   - Windows: Fedora 43's glib 2.86.5 with pcre2 10.48 (the same license,
     bin/LICENSE-pcre2.txt), libintl 0.25.1 (LGPL 2.1), win-iconv 0.0.10
     (public domain) and zlib 1.3.2 (bin/windows-x86_64/licenses).
+- Archaic: https://github.com/tenox7/archaic, Apache License 2.0
+  (/usr/local/src/archaic/LICENSE on the disk).
 - The software on the disk comes from the UNIX PC archives: THE STORE!,
   the 2008 mirror of the 3B1 archive, and the disk images of Arnold
   Robbins (https://www.skeeve.com/3b1/), Alain Knaff and the VCF.
