@@ -121,7 +121,9 @@ on FreeBee's user networking (slirp: NAT, no admin rights needed).
 - The 3B1 is 10.0.2.15.
 - It sees your computer as 10.0.2.2, named qemuhost.
 - Its default route goes through your computer, to the Internet.
-- It has no DNS: use IP addresses, or add names to /etc/hosts.
+- It has no DNS: use IP addresses, or add names to /etc/hosts. That
+  file already has three public telnet hosts: sdf.org, telehack.com
+  and nethack.alt.org (short names: sdf, telehack and nao).
 
 From your computer (after "Please login:" shows):
 - telnet localhost 35123
@@ -134,8 +136,9 @@ From your computer (after "Please login:" shows):
   echo qemuhost NAME >> /.rhosts
 
 From the 3B1:
-- telnet 192.0.2.1 in a UNIX System window, or in the Office:
-  Ethernet, then Network Virtual Terminal (telnet).
+- telnet telehack.com in a UNIX System window, or in the Office:
+  Ethernet, then Network Virtual Terminal (telnet). There, Cmd
+  (Insert) shows a list of hosts.
 - To leave telnet: type ~ (no prompt shows), then quit and Return.
 - The telnet client works on the screen, not on the serial port.
 - ftp works anywhere.
