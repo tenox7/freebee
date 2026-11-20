@@ -153,6 +153,11 @@ computer.
 3. Click the address box, type an address with https:// and press
    Return. Then click the links. PageUp (Help) in the Office lists the
    keys.
+4. To scroll a long page, turn the mouse wheel, click the scroll arrows
+   on the window's right edge, or press PageDown and Shift+PageDown.
+   This needs a WRP of November 2026 or newer. WRP 4.10.3 and older
+   send one screen of the page at a time: click WRP's up and down
+   arrow buttons, next to the address box.
 
 NET=none ./run.sh keeps the Ethernet board but pulls its cable out.
 On Windows: set NET=none, then run.cmd.
@@ -206,7 +211,8 @@ UNIX System V 3.51m with Fix Disk 2.0, and 187 installed packages:
   Mahjongg, Backgammon, Star Trek and more.
 - Made in 2026 for this kit: Tenox Games (2048, Bubble Breaker, Falling
   Blocks, Snake and Sokoban, in the Office) and Archaic, a web browser
-  (see Network). Their source is in /usr/local/src.
+  (see Network). Their source is in /usr/local/src/tenoxgames and
+  /usr/local/src/archaic: the README there tells how to build it.
 
 Known limits:
 - File-it! is not installed: it needs your own serial number and key.
