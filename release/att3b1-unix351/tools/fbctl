@@ -28,7 +28,14 @@ if not args:
 
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 try:
-    s.connect(path)
+    # a Unix socket's path holds only about 100 bytes: for a longer one,
+    # go to its folder and connect by name
+    folder, name = os.path.split(path)
+    if folder and len(os.fsencode(path)) > 90:
+        os.chdir(folder)
+        s.connect(name)
+    else:
+        s.connect(path)
 except OSError as e:
     print("fbctl: cannot connect to %s: %s" % (path, e), file=sys.stderr)
     sys.exit(2)
