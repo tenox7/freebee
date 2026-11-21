@@ -14,10 +14,10 @@ if [ ! -f "$IMG" ]; then
 fi
 W=$(mktemp -d)
 trap 'rm -rf "$W"' EXIT
-python3 "$T/s4get.py" "$IMG" "$W" /unix /etc/lddrv/wind.o /etc/lddrv/wind /lib/shlib
-python3 "$T/patch.py" "$H" "$W/unix" "$W/unix.new" "$W/wind.o" "$W/wind.o.new" "$W/wind"
-python3 "$T/patchlib.py" "$H" "$W/shlib" "$W/shlib.new"
-python3 "$T/s4same.py" "$IMG" /unix "$W/unix.new"
-python3 "$T/s4same.py" "$IMG" /etc/lddrv/wind.o "$W/wind.o.new"
-python3 "$T/s4same.py" "$IMG" /lib/shlib "$W/shlib.new"
+python3 -B "$T/s4get.py" "$IMG" "$W" /unix /etc/lddrv/wind.o /etc/lddrv/wind /lib/shlib
+python3 -B "$T/patch.py" "$H" "$W/unix" "$W/unix.new" "$W/wind.o" "$W/wind.o.new" "$W/wind"
+python3 -B "$T/patchlib.py" "$H" "$W/shlib" "$W/shlib.new"
+python3 -B "$T/s4same.py" "$IMG" /unix "$W/unix.new"
+python3 -B "$T/s4same.py" "$IMG" /etc/lddrv/wind.o "$W/wind.o.new"
+python3 -B "$T/s4same.py" "$IMG" /lib/shlib "$W/shlib.new"
 echo "$IMG: tall, $H lines. Run it with FreeBee built with -DSCR_LINES=$H."
