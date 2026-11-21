@@ -20,11 +20,12 @@ FreeBee kit). The VM must be off. Then:
 
     tall/mktall.sh hd.img [696]
 
-It patches three files in the image, in place:
+It patches four files in the image, in place:
 
 - /unix: the screen clear, the mouse pointer limit, and the window driver's
   back buffer (it takes H*90 bytes off the top of pxmem).
-- /etc/lddrv/wind.o (lddrv links it into /etc/lddrv/wind at every boot):
+- /etc/lddrv/wind.o and /etc/lddrv/wind, the window driver (lddrv loads the
+  linked wind at boot, and links wind.o again only when wind.o is newer):
   the window area, the 4 text lines below it, mouse limits, window move and
   size limits, saved-window sizes. The screen saver is off, because it
   keeps the screen in 8 pages, too few for a tall screen.
@@ -48,7 +49,7 @@ LINES=12 that the Office sets.
 ## The tools
 
 - mktall.sh: all of the above.
-- patch.py: patches /unix and wind.o.
+- patch.py: patches /unix, wind.o and wind.
 - patchlib.py: patches /lib/shlib.
 - s4get.py, s4same.py: copy a file out of a disk image; write a file of the
   same size back in place. s4img.py reads and writes the 3B1 file system.

@@ -1,12 +1,12 @@
-# patch.py H UNIX_IN UNIX_OUT WINDO_IN WINDO_OUT [WIND_LINKED]
+# patch.py H UNIX_IN UNIX_OUT WINDO_IN WINDO_OUT [WIND_LINKED [WIND_OUT]]
 #
 # Patch the 3B1 UNIX 3.51m kernel (/unix) and window driver object
 # (/etc/lddrv/wind.o) for a screen of H lines (348 < H <= 728), 720 pixels
 # and 90 bytes a line as before, in 64 KB of video RAM at 0x420000.
-# lddrv links wind.o again at every boot, so the object is what to patch.
 # Every patch checks the old bytes first. Addresses are those of the
 # linked wind (0x54000) and of /unix; WIND_LINKED (the /etc/lddrv/wind
-# that goes with WINDO_IN) gives the map from one to the other.
+# that goes with WINDO_IN) gives the map from one to the other. With
+# WIND_OUT, the linked wind is patched too (lddrv loads it as it is).
 import struct
 import sys
 import os
@@ -105,4 +105,15 @@ for a, old, new, size in WIND:
     put(buf, osecs[i]['off'] + rel, old, new, size)
     print('wind.o %#07x %6d -> %d' % (a, old, new))
 open(sys.argv[5], 'wb').write(buf)
+
+# the linked window driver: lddrv loads it as it is, and links wind.o again
+# only when wind.o is newer. A disk patched in place keeps the old times,
+# so the linked file gets the same patches.
+if len(sys.argv) > 7:
+    buf = bytearray(ld)
+    for a, old, new, size in WIND:
+        i, rel = sec_of(lsecs, a)
+        put(buf, lsecs[i]['off'] + rel, old, new, size)
+    open(sys.argv[7], 'wb').write(buf)
+    print('wind: the same %d patches' % len(WIND))
 print('H %d: windows 0..%d, text lines at %s' % (H, WH - 1, L))
