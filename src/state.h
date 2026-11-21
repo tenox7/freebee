@@ -9,6 +9,7 @@
 #include "keyboard.h"
 #include "tc8250.h"
 #include "i8274.h"
+#include "screen.h"
 
 
 // Maximum size of the Boot PROMs. Must be a binary power of two.
@@ -44,7 +45,7 @@ typedef struct {
 	size_t		exp_ram_size;		///< Size of Expansion RAM buffer in bytes
 
 	/// Video RAM
-	uint8_t		vram[0x8000];
+	uint8_t		vram[VRAM_SIZE];
 
 	/// Map RAM
 	uint8_t		map[0x800];

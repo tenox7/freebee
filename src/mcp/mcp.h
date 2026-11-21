@@ -11,10 +11,10 @@
 
 #include "json.h"
 #include "img.h"
+#include "../screen.h"
 
-#define SCR_W		720
-#define SCR_H		348
-#define VRAM_ROW	90		// bytes in a screen line
+#define SCR_W		SCR_COLS
+#define SCR_H		SCR_LINES
 #define VRAM_USED	(VRAM_ROW * SCR_H)
 #define TICK_HZ		60
 #define WAIT_MAX_MS	(25 * 60 * 1000)

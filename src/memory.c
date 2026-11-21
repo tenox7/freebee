@@ -130,7 +130,7 @@ MEM_STATUS checkMemoryAccess(uint32_t addr, bool writing, bool dma)/*{{{*/
 	// If we're here, then we must be in User mode.
 	// Check that the user didn't access memory outside of the RAM area
 	if (addr >= 0x400000) {
-		if (state.vidpal && (addr >= 0x420000) && (addr <= 0x427FFF))
+		if (state.vidpal && (addr >= 0x420000) && (addr <= VRAM_LAST))
 			return MEM_ALLOWED;
 		else
 		{
@@ -1136,8 +1136,8 @@ uint32_t m68k_read_memory_32(uint32_t address)/*{{{*/
 				return RD32(state.map, address, 0x7FF);
 				break;
 			case 0x020000:				// Video RAM
-				if (address > 0x427FFF) fprintf(stderr, "NOTE: RD32 from VideoRAM mirror, addr=0x%08X\n", address);
-				return RD32(state.vram, address, 0x7FFF);
+				if (address > VRAM_LAST) fprintf(stderr, "NOTE: RD32 from VideoRAM mirror, addr=0x%08X\n", address);
+				return RD32(state.vram, address, VRAM_SIZE - 1);
 				break;
 			default:
 				return IoRead(address, 32);
@@ -1187,8 +1187,8 @@ uint32_t m68k_read_memory_16(uint32_t address)/*{{{*/
 				data = RD16(state.map, address, 0x7FF);
 				break;
 			case 0x020000:				// Video RAM
-				if (address > 0x427FFF) fprintf(stderr, "NOTE: RD16 from VideoRAM mirror, addr=0x%08X\n", address);
-				data = RD16(state.vram, address, 0x7FFF);
+				if (address > VRAM_LAST) fprintf(stderr, "NOTE: RD16 from VideoRAM mirror, addr=0x%08X\n", address);
+				data = RD16(state.vram, address, VRAM_SIZE - 1);
 				break;
 			default:
 				data = IoRead(address, 16);
@@ -1238,8 +1238,8 @@ uint32_t m68k_read_memory_8(uint32_t address)/*{{{*/
 				data = RD8(state.map, address, 0x7FF);
 				break;
 			case 0x020000:				// Video RAM
-				if (address > 0x427FFF) fprintf(stderr, "NOTE: RD8 from VideoRAM mirror, addr=0x%08X\n", address);
-				data = RD8(state.vram, address, 0x7FFF);
+				if (address > VRAM_LAST) fprintf(stderr, "NOTE: RD8 from VideoRAM mirror, addr=0x%08X\n", address);
+				data = RD8(state.vram, address, VRAM_SIZE - 1);
 				break;
 			default:
 				data = IoRead(address, 8);
@@ -1333,8 +1333,8 @@ void m68k_write_memory_32(uint32_t address, uint32_t value)/*{{{*/
 				WR32(state.map, address, 0x7FF, value);
 				break;
 			case 0x020000:				// Video RAM
-				if (address > 0x427FFF) fprintf(stderr, "NOTE: WR32 to VideoRAM mirror, addr=0x%08X\n", address);
-				WR32(state.vram, address, 0x7FFF, value);
+				if (address > VRAM_LAST) fprintf(stderr, "NOTE: WR32 to VideoRAM mirror, addr=0x%08X\n", address);
+				WR32(state.vram, address, VRAM_SIZE - 1, value);
 				state.vram_updated = true;
 				break;
 			default:
@@ -1380,8 +1380,8 @@ void m68k_write_memory_16(uint32_t address, uint32_t value)/*{{{*/
 				WR16(state.map, address, 0x7FF, value);
 				break;
 			case 0x020000:				// Video RAM
-				if (address > 0x427FFF) fprintf(stderr, "NOTE: WR16 to VideoRAM mirror, addr=0x%08X, data=0x%04X\n", address, value);
-				WR16(state.vram, address, 0x7FFF, value);
+				if (address > VRAM_LAST) fprintf(stderr, "NOTE: WR16 to VideoRAM mirror, addr=0x%08X, data=0x%04X\n", address, value);
+				WR16(state.vram, address, VRAM_SIZE - 1, value);
 				state.vram_updated = true;
 				break;
 			default:
@@ -1426,8 +1426,8 @@ void m68k_write_memory_8(uint32_t address, uint32_t value)/*{{{*/
 				WR8(state.map, address, 0x7FF, value);
 				break;
 			case 0x020000:				// Video RAM
-				if (address > 0x427FFF) fprintf(stderr, "NOTE: WR8 to VideoRAM mirror, addr=0x%08X, data=0x%04X\n", address, value);
-				WR8(state.vram, address, 0x7FFF, value);
+				if (address > VRAM_LAST) fprintf(stderr, "NOTE: WR8 to VideoRAM mirror, addr=0x%08X, data=0x%04X\n", address, value);
+				WR8(state.vram, address, VRAM_SIZE - 1, value);
 				state.vram_updated = true;
 				break;
 			default:

@@ -157,8 +157,8 @@ static bool png_chunk(FILE *f, const char *type, const uint8_t *data, uint32_t l
 		fwrite(tail, 4, 1, f) == 1;
 }
 
-#define SCR_W 720
-#define SCR_H 348
+#define SCR_W SCR_COLS
+#define SCR_H SCR_LINES
 #define ROWBYTES (1 + SCR_W / 8)
 
 static bool save_png(const char *path)

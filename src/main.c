@@ -285,8 +285,8 @@ void refreshScreen(SDL_Surface *s, SDL_Renderer *r, SDL_Texture *t)
 
 	// Refresh the 3B1 screen area first. TODO: only do this if VRAM has actually changed!
 	uint32_t vram_address = 0;
-	for (int y=0; y<348; y++) {
-		for (int x=0; x<720; x+=16) {	// 720 pixels, monochrome, packed into 16bit words
+	for (int y=0; y<SCR_LINES; y++) {
+		for (int x=0; x<SCR_COLS; x+=16) {	// 720 pixels, monochrome, packed into 16bit words
 			// Get the pixel
 			uint16_t val = RD16(state.vram, vram_address, sizeof(state.vram)-1);
 			vram_address += 2;
@@ -323,7 +323,7 @@ void refreshStatusBar(SDL_Renderer *r, SDL_Texture *lightbar_tex)
 	SDL_Rect green_led = 	{ LED_SIZE, 		0, LED_SIZE, LED_SIZE };
 	SDL_Rect yellow_led = 	{ LED_SIZE*2, 		0, LED_SIZE, LED_SIZE };
 	SDL_Rect inactive_led = { LED_SIZE*3, 		0, LED_SIZE, LED_SIZE };
-	SDL_Rect dstrect = 		{ 720-LED_SIZE*4, 348-LED_SIZE, LED_SIZE, LED_SIZE };
+	SDL_Rect dstrect = 		{ SCR_COLS-LED_SIZE*4, SCR_LINES-LED_SIZE, LED_SIZE, LED_SIZE };
 
 	// LED bit values are inverse of documentation (leftmost LED is LSB)
 	// Red user LED (leftmost LED) can be turned on using "syslocal(SYSL_LED, 1)" from sys/syslocal.h
@@ -591,7 +591,7 @@ int main(int argc, char *argv[])
 	// Set up the video display
 	SDL_Window *window;
 	if ((window = SDL_CreateWindow("FreeBee 3B1 Emulator", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-									(int) ceilf(720*scalex), (int) ceilf(348*scaley), 0)) == NULL) {
+									(int) ceilf(SCR_COLS*scalex), (int) ceilf(SCR_LINES*scaley), 0)) == NULL) {
 		fprintf(stderr, "Error creating SDL window: %s.\n", SDL_GetError());
 		exit(EXIT_FAILURE);
 	}
@@ -611,12 +611,12 @@ int main(int argc, char *argv[])
 	SDL_Texture *fbTexture = SDL_CreateTexture(renderer,
                                SDL_PIXELFORMAT_RGB888,
                                SDL_TEXTUREACCESS_STREAMING,
-                               720, 348);
+                               SCR_COLS, SCR_LINES);
 	if (!fbTexture){
 		fprintf(stderr, "Error creating SDL FB texture: %s.\n", SDL_GetError());
 		exit(EXIT_FAILURE);
 	}
-    SDL_Surface *screen = SDL_CreateRGBSurface(0, 720, 348, 32, 0, 0, 0, 0);
+    SDL_Surface *screen = SDL_CreateRGBSurface(0, SCR_COLS, SCR_LINES, 32, 0, 0, 0, 0);
 	if (!screen){
 		fprintf(stderr, "Error creating SDL FB surface: %s.\n", SDL_GetError());
 		exit(EXIT_FAILURE);
@@ -633,7 +633,7 @@ int main(int argc, char *argv[])
 	SDL_Texture *lightbarTexture = SDL_CreateTextureFromSurface(renderer, surf);
 	SDL_FreeSurface(surf);
 
-	printf("Set %dx%d at %d bits-per-pixel mode\n\n", (int) ceilf(720*scalex), (int) ceilf(348*scaley), screen->format->BitsPerPixel);
+	printf("Set %dx%d at %d bits-per-pixel mode\n\n", (int) ceilf(SCR_COLS*scalex), (int) ceilf(SCR_LINES*scaley), screen->format->BitsPerPixel);
 
 	// Set up the dialer's tone output (the system beep comes through it)
 	dialer_init();

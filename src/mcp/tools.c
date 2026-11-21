@@ -592,8 +592,8 @@ static bool tool_vm_info(call *c, const json *a)
 	call_printf(c, "Serial port tty000: pty %s (link %s); MCP serial tools reach it too\n",
 		pty[0] ? pty : "?", link ? link : "?");
 	call_printf(c, "Ethernet: %s\n", r.net[0] ? r.net : "no board ([network] enabled = false)");
-	call_printf(c, "Screen: 720x348, one bit%s; LEDs (red, green, yellow, red): %d%d%d%d\n",
-		s.frame.rev ? ", reverse video" : "",
+	call_printf(c, "Screen: %dx%d, one bit%s; LEDs (red, green, yellow, red): %d%d%d%d\n",
+		SCR_W, SCR_H, s.frame.rev ? ", reverse video" : "",
 		s.leds & 1, (s.leds >> 1) & 1, (s.leds >> 2) & 1, (s.leds >> 3) & 1);
 	int mx, my;
 	if (!s.mouse_enabled)
@@ -701,7 +701,8 @@ static bool tool_screenshot(call *c, const json *a)
 	pthread_mutex_lock(&mcp_mu);
 	bool running = mcp_cpu_running_locked();
 	pthread_mutex_unlock(&mcp_mu);
-	call_printf(c, "Screen %s%s.", has_r ? "region" : "720x348", running ? "" : " (the VM is paused)");
+	call_printf(c, "Screen %s%s.", has_r ? "region" : SCR_LINES == 348 ? "720x348" : "720 wide, taller",
+		running ? "" : " (the VM is paused)");
 	free(f);
 	return true;
 }
@@ -963,8 +964,9 @@ static uint64_t send_counts(int cx, int cy, int step, bool human)
 static void home_pointer(call *c)
 {
 	uint64_t s = 0;
-	// 6 x 127 counts reach the corner from anywhere (0..719, 0..694)
-	for (int i = 0; i < 6; i++)
+	// 6 x 127 counts reach the corner from anywhere (0..719, 0..694;
+	// more on a taller screen)
+	for (int i = 0; i < (PTR_YMAX + 126) / 127; i++)
 		s = mcp_mouse_push(-127, -127, m_buttons, 0);
 	wait_delivered(c, 0, s, false);
 	wait_ticks(c, 3);
@@ -1733,8 +1735,8 @@ static uint8_t *mem_byte(uint32_t addr, bool phys, bool for_write)
 			addr = map_virt(addr, &present);
 			if (!present)
 				return NULL;
-		} else if (addr >= 0x420000 && addr < 0x428000) {
-			return &state.vram[addr & 0x7fff];
+		} else if (addr >= 0x420000 && addr <= VRAM_LAST) {
+			return &state.vram[addr & (VRAM_SIZE - 1)];
 		} else if (addr >= 0x400000 && addr < 0x400800) {
 			return &state.map[addr & 0x7ff];
 		} else {

@@ -106,10 +106,11 @@ bool pointer_from_kernel(void)
 // a2 is msinfo { long x, y; char buttons; }, from a movea.l #msinfo,a2
 // near mscan's top. klow, the keyboard interrupt, gives mscan each byte as
 // it comes in, so msinfo is new as soon as the guest has read a packet.
+// A UNIX patched for a taller screen has PTR_YMAX in place of 694.
 static const uint16_t clamps[] = {
-	0x0C92, 0x0000, 0x02CF, 0x6F06, 0x24BC, 0x0000, 0x02CF,
+	0x0C92, 0x0000, PTR_XMAX, 0x6F06, 0x24BC, 0x0000, PTR_XMAX,
 	0x4AAA, 0x0004, 0x6C06, 0x42AA, 0x0004, 0x6012,
-	0x0CAA, 0x0000, 0x02B6, 0x0004, 0x6F08, 0x257C, 0x0000, 0x02B6, 0x0004,
+	0x0CAA, 0x0000, PTR_YMAX, 0x0004, 0x6F08, 0x257C, 0x0000, PTR_YMAX, 0x0004,
 };
 #define N_CLAMPS (sizeof(clamps) / sizeof(clamps[0]))
 
@@ -191,7 +192,7 @@ static bool following;
 void pointer_track(int x, int y)
 {
 	host_x = clamp(x, 0, PTR_XMAX);
-	host_y = clamp(y, 0, 347);
+	host_y = clamp(y, 0, SCR_LINES - 1);
 	following = true;
 }
 

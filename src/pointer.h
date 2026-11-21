@@ -2,6 +2,7 @@
 #define _POINTER_H
 
 #include <stdbool.h>
+#include "screen.h"
 
 /*
  * Where the 3B1's mouse pointer is, and the seamless mouse: over the
@@ -9,9 +10,9 @@
  */
 
 /// The kernel keeps the pointer in 0..PTR_XMAX across and 0..PTR_YMAX
-/// down; from row 348 down it is below the screen.
-#define PTR_XMAX 719
-#define PTR_YMAX 694
+/// down (694 on the 3B1); from row SCR_LINES down it is below the screen.
+#define PTR_XMAX (SCR_COLS - 1)
+#define PTR_YMAX (2 * SCR_LINES - 2)
 
 /// main thread: mouse_event put a packet in the keyboard buffer
 void pointer_moved(int dx, int dy, int buttons);

@@ -458,8 +458,8 @@ static bool rec_start(call *c, const json *a)
 	pthread_cond_broadcast(&mcp_cv);
 	pthread_mutex_unlock(&mcp_mu);
 
-	call_printf(c, "Recording to %s.avi: 720x348, 60 frames a second of guest time, %s phosphor, %s.",
-		base, colors[color], audio ? "with the speaker's sound" : "no sound");
+	call_printf(c, "Recording to %s.avi: %dx%d, 60 frames a second of guest time, %s phosphor, %s.",
+		base, SCR_W, SCR_H, colors[color], audio ? "with the speaker's sound" : "no sound");
 	if (freeze)
 		call_printf(c, " The VM runs only during MCP calls (freeze): let it run with a wait or a"
 			" mark's hold-ms.");
