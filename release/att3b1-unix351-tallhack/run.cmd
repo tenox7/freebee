@@ -1,10 +1,10 @@
 @echo off
 rem AT&T UNIX PC (3B1 / PC 7300) with UNIX System V 3.51m, on the FreeBee
-rem emulator. See README.txt.
+rem emulator, with a tall 720x696 screen (a hack). See README.txt.
 rem   run.cmd              boot disk\hd.img; log in as tenox or root
 rem   run.cmd 4x           CPU speed: 1x is a real 3B1 (10 MHz), up to 32x;
 rem                        default 10x. The clock stays real
-rem   set ZOOM=2           each 3B1 pixel 2x2 (1440x696); default 1: no zoom
+rem   set ZOOM=2           each 3B1 pixel 2x2 (1440x1392); default 1: no zoom
 rem   set COLOR=white      green (default), white or amber screen
 rem   set MOUSE=grab       F10 grabs the mouse for the 3B1 and lets it go;
 rem                        default seamless: the 3B1's pointer follows yours
@@ -89,8 +89,8 @@ rem the variables, not that file. 'quotes' keep the backslashes of paths.
 >>.freebee.toml echo [network]
 >>.freebee.toml echo enabled = true
 >>.freebee.toml echo backend = "%NET%"
->>.freebee.toml echo hostfwd = "tcp:127.0.0.1:35123-:23, tcp:127.0.0.1:35121-:21, tcp:127.0.0.1:35514-:514"
-echo run.cmd: CPU %N%x. After the login prompt: telnet localhost 35123
+>>.freebee.toml echo hostfwd = "tcp:127.0.0.1:14123-:23, tcp:127.0.0.1:14121-:21, tcp:127.0.0.1:14514-:514"
+echo run.cmd: CPU %N%x. After the login prompt: telnet localhost 14123
 bin\windows-x86_64\freebee.exe
 exit /b %errorlevel%
 :badspeed

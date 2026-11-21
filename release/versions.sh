@@ -1,5 +1,9 @@
 # The libraries built into the release binaries: version and the sha256 of
 # the download. The build-*.sh scripts read this file.
+
+# Branch tall-screen: the release builds have a screen of SCR_LINES lines
+# (see tall/README.md), and their version ends in -tall.
+SCR_LINES=696
 SDL2_V=2.32.10
 SDL2_SHA=5f5993c530f084535c65a6879e9b26ad441169b3e25d789d83287040a9ca5165
 SDL2_MINGW_SHA=83a5d74012311edc3c0d40ea6faecbe57ad692aa033fa5dc273cc937e3938ff2

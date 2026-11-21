@@ -1,27 +1,32 @@
 #!/bin/sh
-# Packs the AT&T UNIX PC kit, att3b1-unix351-freebee.tar.lz: FreeBee for
-# macOS arm64, Linux x86_64 and aarch64 and Windows x86_64, UNIX 3.51 on a
-# 195 MB disk, the boot ROMs and slirp networking. Runs on macOS.
+# Packs the tall AT&T UNIX PC kit, att3b1-unix351-freebee-tallhack.tar.lz
+# (branch tall-screen, a hack): FreeBee with a 720x696 screen for macOS
+# arm64, Linux x86_64 and aarch64 and Windows x86_64, UNIX 3.51 patched for
+# that screen on a 195 MB disk, the boot ROMs and slirp networking. Runs on
+# macOS.
 #
 #   mkkit.sh [-n] BIN DISK ROMS OUT
 #
 # BIN   what build-macos.sh, build-linux.sh (amd64 and arm64) and
 #       build-windows.sh made: macos-arm64, linux-x86_64, linux-aarch64,
 #       windows-x86_64 and the LICENSE files. All 4 builds must come from
-#       the same commit, with no -dirty. The macOS files must be signed with
-#       a Developer ID and notarized: SIGNCHECK checks them (default
+#       the same commit, with no -dirty, and be tall builds (version
+#       -tall). The macOS files must be signed with a Developer ID and
+#       notarized: SIGNCHECK checks them (default
 #       ~/code/lemu/machines/release/sign-mac.sh, from
 #       https://github.com/tenox7/lemu, run with -c).
 # DISK  the hard disk image: a copy with no private files, its free space
-#       zero-filled, shut down cleanly.
+#       zero-filled, shut down cleanly, then made tall with
+#       tall/mktall.sh.
 # ROMS  a folder with 14c.bin and 15c.bin.
-# OUT   gets att3b1-unix351-freebee.tar.lz.
-# -n    only makes the kit folder OUT/att3b1-unix351-freebee, for a test
-#       boot. It skips the checks of the commit and of the signatures.
+# OUT   gets att3b1-unix351-freebee-tallhack.tar.lz.
+# -n    only makes the kit folder OUT/att3b1-unix351-freebee-tallhack, for
+#       a test boot. It skips the checks of the commit and of the
+#       signatures.
 set -e
 here=$(cd "$(dirname "$0")" && pwd)
-name=att3b1-unix351-freebee
-tpl=$here/att3b1-unix351
+name=att3b1-unix351-freebee-tallhack
+tpl=$here/att3b1-unix351-tallhack
 only=
 [ "$1" = -n ] && { only=1; shift; }
 if [ $# -ne 4 ]; then
@@ -46,8 +51,10 @@ for f in macos-arm64/freebee linux-x86_64/freebee linux-aarch64/freebee windows-
 	[ -n "$r" ] || { echo "mkkit: $f names no commit" >&2; exit 1; }
 	[ -z "$rev" ] || [ "$r" = "$rev" ] || { echo "mkkit: $f is $r, the others $rev" >&2; exit 1; }
 	rev=$r
+	LC_ALL=C grep -a -q -e "-tall (git $r)" "$bin/$f" ||
+		{ echo "mkkit: $f is not a tall build (no -tall in its version)" >&2; exit 1; }
 done
-echo "FreeBee $rev"
+echo "FreeBee $rev, tall"
 if [ -z "$only" ]; then
 	case $rev in
 	*-dirty) echo "mkkit: the binaries come from a tree with changes" >&2; exit 1 ;;

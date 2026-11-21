@@ -1,9 +1,13 @@
-# Release builds and the 3B1 kit
+# Release builds and the tall 3B1 kit
 
 These scripts build FreeBee to run on other people's computers, with
-nothing else installed, and pack the AT&T UNIX PC kit
-(`att3b1-unix351-freebee.tar.lz`): FreeBee for 4 platforms, UNIX 3.51 on a
-195 MB disk, the boot ROMs and slirp networking.
+nothing else installed, and pack the AT&T UNIX PC kit. On this branch
+(tall-screen) they make the tall kit,
+`att3b1-unix351-freebee-tallhack.tar.lz`: FreeBee with a 720x696 screen
+(`SCR_LINES` in `versions.sh`, version `-tall`) for 4 platforms, UNIX 3.51
+made tall with `tall/mktall.sh` on a 195 MB disk, the boot ROMs and slirp
+networking. The normal kit, `att3b1-unix351-freebee.tar.lz`, comes from
+master.
 
 | File | What it does |
 |---|---|
@@ -12,7 +16,7 @@ nothing else installed, and pack the AT&T UNIX PC kit
 | `build-linux.sh amd64\|arm64 SRC OUT` | Linux x86_64 or aarch64, glibc 2.34 and later, in Docker (AlmaLinux 9). |
 | `build-windows.sh SRC OUT` | Windows x86_64 with MinGW, in Docker (Fedora 43). No serial port, control socket or MCP server. |
 | `mkkit.sh [-n] BIN DISK ROMS OUT` | Packs the kit. `-n` only makes the kit folder, for a test boot. |
-| `att3b1-unix351/` | The kit's `run.sh`, `run.cmd`, `README.txt` and `tools/fbctl`. |
+| `att3b1-unix351-tallhack/` | The kit's `run.sh`, `run.cmd`, `README.txt` and `tools/fbctl`. |
 
 Each build copies the tree first and refuses one with changes, so a
 release binary is always a commit. `ALLOW_DIRTY=1` builds anyway, for
@@ -38,10 +42,11 @@ with `-n`.
    sh release/mkkit.sh BIN DISK ROMS OUT
    ```
    - DISK: a copy of the hard disk with no private files, its free space
-     zero-filled, shut down cleanly.
+     zero-filled, shut down cleanly, then made tall with
+     `tall/mktall.sh DISK` (for example: the disk of the normal kit).
    - ROMS: a folder with `14c.bin` and `15c.bin`.
-   - It checks that the 4 builds name the same commit and that the macOS
-     files are signed and notarized (`SIGNCHECK` is the path of
-     `sign-mac.sh`, run with `-c`).
+   - It checks that the 4 builds name the same commit and are tall
+     builds, and that the macOS files are signed and notarized
+     (`SIGNCHECK` is the path of `sign-mac.sh`, run with `-c`).
 5. Test the unpacked kit: boot it with `HEADLESS=1 ./run.sh`, log in, and
-   `telnet localhost 35123`.
+   `telnet localhost 14123`.

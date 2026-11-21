@@ -1,12 +1,12 @@
 #!/bin/sh
 # AT&T UNIX PC (3B1 / PC 7300) with UNIX System V 3.51m, on the FreeBee
-# emulator. See README.txt.
+# emulator, with a tall 720x696 screen (a hack). See README.txt.
 #
 #   ./run.sh                 boot disk/hd.img; log in as tenox or root
 #   ./run.sh 4x              CPU speed: 1x is a real 3B1 (10 MHz), up to 32x;
 #                            default 10x. The clock stays real
-#   ZOOM=2 ./run.sh          each 3B1 pixel 2x2 (1440x696), 3 for 3x3 ...;
-#                            default 1: no zoom (720x348)
+#   ZOOM=2 ./run.sh          each 3B1 pixel 2x2 (1440x1392), 3 for 3x3 ...;
+#                            default 1: no zoom (720x696)
 #   COLOR=white ./run.sh     green (default), white or amber screen
 #   MOUSE=grab ./run.sh      F10 grabs the mouse for the 3B1 and lets it go;
 #                            default seamless: the 3B1's pointer follows
@@ -114,11 +114,11 @@ cat > .freebee.toml <<EOF
 [network]
 	enabled = true
 	backend = "$NET"
-	hostfwd = "tcp:127.0.0.1:35123-:23, tcp:127.0.0.1:35121-:21, tcp:127.0.0.1:35514-:514"
+	hostfwd = "tcp:127.0.0.1:14123-:23, tcp:127.0.0.1:14121-:21, tcp:127.0.0.1:14514-:514"
 EOF
 
 echo "run.sh: CPU ${TURBO}x ($((TURBO * 10)) MHz)" >&2
-[ "$NET" = slirp ] && echo "run.sh: after the login prompt: telnet localhost 35123" >&2
+[ "$NET" = slirp ] && echo "run.sh: after the login prompt: telnet localhost 14123" >&2
 if [ -n "$HEADLESS" ] && [ "$HEADLESS" != 0 ]; then
 	export FREEBEE_HEADLESS=1
 fi

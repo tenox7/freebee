@@ -63,6 +63,7 @@ cp -R /src /tmp/fb
 # a console program (FreeBee prints what it does), so no -mwindows
 make -C /tmp/fb PLATFORM=win32 CC=x86_64-w64-mingw32-gcc HOSTCC=gcc \
 	STRIP=x86_64-w64-mingw32-strip VER_GITREV="$FREEBEE_REV" \
+	EXT_CFLAGS="-mconsole -D_WIN32_WINNT=0x0601 -DSCR_LINES=$SCR_LINES" VER_EXTRA=-tall \
 	SDL2_CFLAGS="$(sh $sdl/bin/sdl2-config --prefix=$sdl --cflags)" \
 	SDL2_LIBS="-L$sdl/lib -lmingw32 -lSDL2main -lSDL2" \
 	SLIRP=yes SLIRP_CFLAGS="-DLIBSLIRP_STATIC -I$p/include/slirp $(x86_64-w64-mingw32-pkg-config --cflags glib-2.0)" \

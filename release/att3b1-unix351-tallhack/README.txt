@@ -1,9 +1,32 @@
 AT&T UNIX PC (3B1 / PC 7300) with UNIX System V 3.51m, emulated by FreeBee
+Tall screen hack: 720x696
 ==========================================================================
 
 The UNIX PC: a 68010 CPU at 10 MHz (run 10 times as fast here), 4 MB RAM,
-a 720x348 one-bit screen (shown green), a 195 MB hard disk and the 3B1
-Ethernet board. The disk has nearly every program made for the UNIX PC.
+a one-bit screen (shown green), a 195 MB hard disk and the 3B1 Ethernet
+board. The disk has nearly every program made for the UNIX PC.
+
+
+The tall screen (a hack)
+------------------------
+
+A real 3B1 has a 720x348 screen. In this kit the screen is twice as tall:
+720x696. Real hardware cannot do this. It is a hack, for fun.
+- FreeBee is built with a taller screen (-DSCR_LINES=696). Its version
+  ends in -tall.
+- UNIX is patched for it: /unix, /etc/lddrv/wind.o, /etc/lddrv/wind and
+  /lib/shlib (binary patches by tall/mktall.sh, see Credits).
+- This FreeBee and this disk work only together. The normal FreeBee
+  shows garbage with this disk.
+- Office windows, shells and forms can go down to the bottom of the
+  screen: move them there, or make them taller.
+- New Office windows open in the top 20 lines, as on a real 3B1.
+- Full-screen UNIX has 53 lines. vi uses the LINES=12 that the Office
+  sets.
+- The screen saver is off.
+- The normal kit, with the 720x348 screen, is
+  att3b1-unix351-freebee.tar.lz. The software on the disk is the same as
+  in its release of 2026-11-20.
 
 
 Start
@@ -101,7 +124,8 @@ Speed, screen and mouse
 
 - ./run.sh 4x: the CPU is 4 times as fast as a real 3B1. 1x to 32x, and
   10x if you say nothing. The clock always keeps real time.
-- ZOOM=2 ./run.sh shows each pixel as 2x2 (1440x696). ZOOM=3 for 3x3.
+- ZOOM=2 ./run.sh shows each pixel as 2x2 (1440x1392, taller than most
+  screens). ZOOM=3 for 3x3.
 - COLOR=white ./run.sh or COLOR=amber ./run.sh: another screen color.
 - The mouse: over the window, the 3B1's pointer follows yours. There is
   no grab. MOUSE=grab ./run.sh gives the old way: F10 grabs the mouse
@@ -125,12 +149,13 @@ on FreeBee's user networking (slirp: NAT, no admin rights needed).
   file already has three public telnet hosts: sdf.org, telehack.com
   and nethack.alt.org (short names: sdf, telehack and nao).
 
-From your computer (after "Please login:" shows):
-- telnet localhost 35123
-  macOS has no telnet. Use curl telnet://localhost:35123 instead.
-- FTP, port 35121, active mode only (ftpd has no passive mode):
-  curl -P - -u root:x ftp://localhost:35121/etc/hosts
-- rsh and rcp, port 35514. rshd takes only the users listed in /.rhosts
+From your computer (after "Please login:" shows). The ports are not those
+of the normal kit (35xxx), so both kits can run at once.
+- telnet localhost 14123
+  macOS has no telnet. Use curl telnet://localhost:14123 instead.
+- FTP, port 14121, active mode only (ftpd has no passive mode):
+  curl -P - -u root:x ftp://localhost:14121/etc/hosts
+- rsh and rcp, port 14514. rshd takes only the users listed in /.rhosts
   (to log in as root) and /etc/hosts.equiv (other accounts), as
   "qemuhost NAME". It has no + wildcard. Add your own name, as root:
   echo qemuhost NAME >> /.rhosts
@@ -229,9 +254,10 @@ Credits and licenses
 --------------------
 
 - FreeBee: Phil Pemberton and others, https://github.com/philpem/freebee
-  This build: https://github.com/tenox7/freebee at @REV@, with the
-  Ethernet board, slirp networking, turbo, the control socket and the
-  MCP server. GPL 3: bin/LICENSE-freebee.txt.
+  This build: https://github.com/tenox7/freebee branch tall-screen at
+  @REV@, with the tall screen, the Ethernet board, slirp networking,
+  turbo, the control socket and the MCP server. tall/README.md there
+  tells what the UNIX patches change. GPL 3: bin/LICENSE-freebee.txt.
 - Musashi (the 68000 CPU emulator): Karl Stenerud, from
   https://github.com/tenox7/Musashi. bin/LICENSE-musashi.txt.
 - SDL 2.32.10: zlib license, bin/LICENSE-SDL2.txt.

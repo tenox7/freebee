@@ -58,6 +58,7 @@ ninja -C slirp-build install > slirp-build.log 2>&1 || { tail -30 slirp-build.lo
 
 cp -R /src /tmp/fb
 make -C /tmp/fb PLATFORM=linux VER_GITREV="$FREEBEE_REV" \
+	EXT_CFLAGS=-DSCR_LINES=$SCR_LINES VER_EXTRA=-tall \
 	SDL2_CFLAGS="$($p/bin/sdl2-config --cflags)" \
 	SDL2_LIBS="$($p/bin/sdl2-config --static-libs)" \
 	SLIRP=yes SLIRP_CFLAGS="-I$p/include/slirp $(pkg-config --cflags glib-2.0)" \

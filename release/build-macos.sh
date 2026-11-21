@@ -74,6 +74,7 @@ cmake --build sdl-build > sdl-build.log 2>&1 || { tail -30 sdl-build.log; exit 1
 cmake --install sdl-build > /dev/null
 
 make -C fb PLATFORM=linux VER_GITREV=$FREEBEE_REV \
+	EXT_CFLAGS=-DSCR_LINES=$SCR_LINES VER_EXTRA=-tall \
 	SDL2_CFLAGS="$("$p/bin/sdl2-config" --cflags)" \
 	SDL2_LIBS="$("$p/bin/sdl2-config" --static-libs)" \
 	SLIRP=yes SLIRP_CFLAGS="-I$p/include/slirp $(pkg-config --cflags glib-2.0)" \
