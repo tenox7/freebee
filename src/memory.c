@@ -1304,6 +1304,16 @@ bool mem_peek16(uint32_t logical, uint16_t *data)
 	return true;
 }
 
+bool mem_peek_phys16(uint32_t phys, uint16_t *data)
+{
+	phys &= ~1;
+	if (phys < 0x200000 ? phys >= state.base_ram_size
+			: phys - 0x200000 >= state.exp_ram_size)
+		return false;
+	*data = ram_read_16(phys);
+	return true;
+}
+
 /**
  * @brief Write M68K memory, 32-bit
  */

@@ -23,6 +23,9 @@
  *                      with buttons B: the seamless mouse follows it
  *   wheel N            as if the host's mouse wheel turned N steps (+ up,
  *                      - down): it scrolls a window that has scroll arrows
+ *   closeapp           like Alt-F9: close the program in the front window
+ *                      (kill its process group), not the Office's
+ *   closeapp result    what the last closeapp did
  *   speed max|real     run as fast as the host can, or at 10 MHz
  *   status             floppy, speed, keys still queued, LEDs, idle: how
  *                      much of the last second the idle skip took off the
@@ -44,6 +47,7 @@
 #include "keys.h"
 #include "pointer.h"
 #include "wheel.h"
+#include "closeapp.h"
 
 bool control_speed_max = false;
 int control_turbo = 1;
@@ -349,6 +353,16 @@ static void command(struct client *c, char *line)
 		}
 		wheel_scroll(n);
 		reply(c, "ok");
+	} else if (strcmp(line, "closeapp") == 0) {
+		if (strcmp(args, "result") == 0) {
+			snprintf(msg, sizeof(msg), "ok %s", closeapp_result());
+			reply(c, msg);
+		} else if (!*args) {
+			closeapp_request();
+			reply(c, "ok");
+		} else {
+			reply(c, "err closeapp [result]");
+		}
 	} else if (strcmp(line, "speed") == 0) {
 		if (strcmp(args, "max") == 0)
 			control_speed_max = true;
@@ -391,7 +405,7 @@ static void command(struct client *c, char *line)
 	} else if (*line == 0) {
 		reply(c, "err empty command");
 	} else {
-		reply(c, "err unknown command (type key floppy eject hd2 screenshot mouse pointer wheel speed status quit)");
+		reply(c, "err unknown command (type key floppy eject hd2 screenshot mouse pointer wheel closeapp speed status quit)");
 	}
 }
 

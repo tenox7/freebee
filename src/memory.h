@@ -87,5 +87,7 @@ bool mem_dma_read16(uint32_t logical, uint16_t *data);
 bool mem_dma_write16(uint32_t logical, uint16_t data, uint16_t mem_mask);
 /// The same read without touching the page's accessed bit
 bool mem_peek16(uint32_t logical, uint16_t *data);
+/// A word of RAM at a physical address; false if there is no RAM there
+bool mem_peek_phys16(uint32_t phys, uint16_t *data);
 
 #endif

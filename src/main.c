@@ -23,6 +23,7 @@
 #include "enet.h"
 #include "pointer.h"
 #include "wheel.h"
+#include "closeapp.h"
 
 extern int cpu_log_enabled;
 
@@ -144,6 +145,7 @@ void freebee_reset(void)
 	keyboard_init(&state.kbd);
 	pointer_reset();
 	wheel_reset();
+	closeapp_reset();
 	wd2797_reset(&state.fdc_ctx);
 	wd2010_reset(&state.hdc_ctx);
 	enet_reset();
@@ -343,6 +345,8 @@ void refreshStatusBar(SDL_Renderer *r, SDL_Texture *lightbar_tex)
 // - grab: F10 grabs the mouse: the host pointer goes away and its moves go
 //   to the 3B1 as they are. F10 again lets it go.
 static bool mouse_grabbed, mouse_seamless, cursor_hidden;
+// F9 went down with Alt: Alt-F9, not Suspd
+static bool closeapp_key_down;
 static int mouse_buttons;
 // window pixels per screen pixel
 static float win_scale_x = 1, win_scale_y = 1;
@@ -386,6 +390,21 @@ bool HandleSDLEvents(SDL_Window *window)
 	while (SDL_PollEvent(&event))
 	{
 		if ((event.type == SDL_KEYDOWN) || (event.type == SDL_KEYUP)) {
+			// Alt-F9 (Option-F9): close the program in the front window.
+			// Then F9 is not the Suspd key, down or up.
+			if (event.key.keysym.sym == SDLK_F9) {
+				bool const down = event.type == SDL_KEYDOWN;
+				if (down && !event.key.repeat) {
+					closeapp_key_down = (event.key.keysym.mod & KMOD_ALT) != 0;
+					if (closeapp_key_down)
+						closeapp_request();
+				}
+				if (closeapp_key_down) {
+					if (!down)
+						closeapp_key_down = false;
+					continue;
+				}
+			}
 			keyboard_event(&state.kbd, &event);
 		}
 
@@ -933,6 +952,8 @@ int main(int argc, char *argv[])
 			// the mouse: the seamless pointer, the kernel's copy of its place
 			pointer_tick();
 			wheel_tick();
+			// Alt-F9: close the program in the front window
+			closeapp_tick();
 			// scan the keyboard
 			keyboard_scan(&state.kbd);
 			// scan the serial pty for new data

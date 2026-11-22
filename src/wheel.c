@@ -79,6 +79,15 @@ static void find_keywp(void)
 	}
 }
 
+uint32_t wheel_keywp(void)
+{
+	if (keywp_at && keywp_from(code_at) != keywp_at)
+		keywp_at = 0;		// another kernel is running: look again
+	if (!keywp_at)
+		find_keywp();
+	return keywp_at;
+}
+
 // the window that has the keyboard has scroll arrows, and the pointer is
 // over it
 static bool window_scrolls(void)
