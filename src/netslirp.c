@@ -22,6 +22,7 @@
 #include <libslirp.h>
 #include "netslirp.h"
 #include "enet.h"
+#include "netfix.h"
 #include "fbconfig.h"
 
 #define GUEST_ADDR	"10.0.2.15"
@@ -65,128 +66,20 @@ static bool ip4(const char *s, struct in_addr *a)
 	return inet_pton(AF_INET, s, a) == 1;
 }
 
-/*
- * Two fixes for 1986 programs, in the frames slirp sends to the guest. Each
- * keeps the length, so the TCP sequence numbers stay right; then the TCP
- * checksum is made again.
- */
+// libslirp 4.8 made the callbacks return slirp_ssize_t; before, ssize_t
+#if !SLIRP_CHECK_VERSION(4, 8, 0)
+typedef ssize_t slirp_ssize_t;
+#endif
 
-// The TCP segment in an Ethernet frame, if it is IPv4, TCP and no fragment
-typedef struct {
-	uint8_t *ip, *tcp, *data;
-	int tcp_len, n;			// TCP header and data; data only
-	int sport, dport;
-} SEGMENT;
-
-static bool tcp_segment(uint8_t *f, int len, SEGMENT *s)
-{
-	if (len < 14 + 20 + 20 || f[12] != 0x08 || f[13] != 0x00)
-		return false;
-	s->ip = f + 14;
-	int const ihl = (s->ip[0] & 15) * 4;
-	int const ip_len = (s->ip[2] << 8) | s->ip[3];
-	if ((s->ip[0] >> 4) != 4 || s->ip[9] != 6 || ihl < 20 || ip_len > len - 14 || ip_len < ihl + 20)
-		return false;
-	if ((((s->ip[6] << 8) | s->ip[7]) & 0x3fff) != 0)	// a fragment
-		return false;
-	s->tcp = s->ip + ihl;
-	s->tcp_len = ip_len - ihl;
-	int const thl = (s->tcp[12] >> 4) * 4;
-	if (thl < 20 || thl > s->tcp_len)
-		return false;
-	s->data = s->tcp + thl;
-	s->n = s->tcp_len - thl;
-	s->sport = (s->tcp[0] << 8) | s->tcp[1];
-	s->dport = (s->tcp[2] << 8) | s->tcp[3];
-	return true;
-}
-
-static void tcp_new_checksum(SEGMENT *s)
-{
-	uint32_t sum = 6 + s->tcp_len;		// pseudo header: protocol, length
-
-	s->tcp[16] = s->tcp[17] = 0;
-	for (int i = 12; i < 20; i += 2)	// source and destination address
-		sum += (s->ip[i] << 8) | s->ip[i + 1];
-	for (int i = 0; i + 1 < s->tcp_len; i += 2)
-		sum += (s->tcp[i] << 8) | s->tcp[i + 1];
-	if (s->tcp_len & 1)
-		sum += s->tcp[s->tcp_len - 1] << 8;
-	while (sum >> 16)
-		sum = (sum & 0xffff) + (sum >> 16);
-	sum = ~sum & 0xffff;
-	s->tcp[16] = sum >> 8;
-	s->tcp[17] = sum & 0xff;
-}
-
-/*
- * FTP into the guest through a forwarded port. The 3B1's ftpd has only
- * active mode, and a client on the host's loopback tells it to connect
- * back to 127.0.0.1, which on the 3B1 is the 3B1. slirp rewrites the
- * guest's FTP commands, not the host's. So to the guest's port 21,
- * "PORT 127,0,0,1," becomes "PORT 10,0,2,02,": 10.0.2.2 is the host as the
- * guest sees it.
- */
-#define FTP_PORT_FROM	"PORT 127,0,0,1,"
-#define FTP_PORT_TO	"PORT 10,0,2,02,"
-
-static void ftp_port_fixup(SEGMENT *s)
-{
-	int const k = sizeof(FTP_PORT_FROM) - 1;
-
-	for (int i = 0; i + k <= s->n; i++) {
-		if (memcmp(s->data + i, FTP_PORT_FROM, k) == 0) {
-			memcpy(s->data + i, FTP_PORT_TO, k);
-			tcp_new_checksum(s);
-			return;
-		}
-	}
-}
-
-/*
- * Telnet out of the guest. The 3B1's telnet client takes the WILL STATUS
- * in a server's status report (RFC 859) for a new offer, and asks for the
- * status again: with a telnetd that offers STATUS, as modern ones do,
- * "STATUS IS :" fills the screen for ever. So from a server's port 23,
- * IAC WILL STATUS becomes IAC WONT STATUS and IAC DO STATUS becomes IAC DONT
- * STATUS, and the client never turns STATUS on.
- */
-#define TN_IAC		255
-#define TN_WILL		251
-#define TN_DO		253
-#define TN_STATUS	5
-
-static void telnet_status_fixup(SEGMENT *s)
-{
-	bool changed = false;
-	int iacs = 0;		// IAC bytes in a row before this one: IAC IAC is a data byte 255
-
-	for (int i = 0; i + 2 < s->n; i++) {
-		uint8_t *p = s->data + i;
-		if (p[0] == TN_IAC && iacs % 2 == 0 && (p[1] == TN_WILL || p[1] == TN_DO) && p[2] == TN_STATUS) {
-			p[1]++;			// WILL to WONT, DO to DONT
-			changed = true;
-		}
-		iacs = p[0] == TN_IAC ? iacs + 1 : 0;
-	}
-	if (changed)
-		tcp_new_checksum(s);
-}
-
+// A frame from slirp for the guest; netfix.c may change a copy of it
 static slirp_ssize_t send_packet(const void *buf, size_t len, void *opaque)
 {
 	static uint8_t frame[1514];
-	SEGMENT s;
 
 	(void)opaque;
 	if (len <= sizeof(frame)) {
 		memcpy(frame, buf, len);
-		if (tcp_segment(frame, (int)len, &s)) {
-			if (s.dport == 21)
-				ftp_port_fixup(&s);
-			if (s.sport == 23)
-				telnet_status_fixup(&s);
-		}
+		netfix_frame(frame, (int)len);
 		buf = frame;
 	}
 	enet_host_receive(buf, (int)len);
@@ -390,9 +283,13 @@ bool netslirp_init(const char *hostfwd)
 	cfg.in6_enabled = false;
 	ip4(GUEST_ADDR, &cfg.vdhcp_start);
 	ip4("10.0.2.3", &cfg.vnameserver);
-	// slirp's helpers for old protocols through NAT: FTP's PORT command
-	// (the 3B1's ftp has no passive mode), rlogin, ident
+	// [network] emu: libslirp's own helpers for old protocols through its
+	// NAT, which rewrite the guest's FTP PORT commands (the 3B1's ftp has
+	// no passive mode), and look at rlogin and IRC. Off, as in QEMU.
 	cfg.enable_emu = fbc_get_bool("network", "emu");
+	// fixes for 1986 programs (netfix.c), off by default
+	netfix_config(fbc_get_bool("network", "fix_telnet_status"),
+			fbc_get_bool("network", "fix_ftp_port"));
 
 	memset(&cb, 0, sizeof(cb));
 	cb.send_packet = send_packet;

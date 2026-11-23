@@ -118,8 +118,8 @@ BUILD_TYPE	?=	release
 TARGET		=	freebee
 
 # source files that produce object files
-SRC			=	main.c state.c memory.c wd279x.c wd2010.c keyboard.c pointer.c wheel.c closeapp.c tc8250.c diskraw.c diskimd.c i8274.c fbconfig.c toml.c dialer.c control.c keys.c
-SRC			+=	lance.c enet.c netslirp.c
+SRC			=	main.c state.c memory.c wd279x.c wd2010.c keyboard.c pointer.c keywin.c wheel.c closeapp.c tc8250.c diskraw.c diskimd.c i8274.c fbconfig.c toml.c dialer.c control.c keys.c
+SRC			+=	expcard.c lance.c enet.c netslirp.c netfix.c
 ifeq ($(strip $(PLATFORM)),win32)
 # Windows has no pty, Unix sockets or MCP server: stubs for the MCP calls
 SRC			+=	mcp/stub.c
@@ -136,9 +136,6 @@ EXT_OBJ		=
 # libraries to link in -- these will be specified as "-l" parameters, the -l
 # is prepended automatically
 LIB			= m pthread z
-ifeq ($(strip $(PLATFORM)),win32)
-LIB			+= ws2_32 iphlpapi
-endif
 # library paths -- where to search for the above libraries
 LIBPATH		=
 # include paths -- where to search for #include files (in addition to the
@@ -167,8 +164,8 @@ ENABLE_SDL	=	yes
 ifeq ($(strip $(PLATFORM)),win32)
 	# windows executables have a .exe suffix
 	TARGET := $(addsuffix .exe,$(TARGET))
-	# console mode application, for Windows 7 and up (WSAPoll, inet_pton)
-	EXT_CFLAGS = -mconsole -D_WIN32_WINNT=0x0601
+	# console mode application
+	EXT_CFLAGS = -mconsole
 	EXT_LDFLAGS = -mconsole
 endif
 
@@ -283,7 +280,7 @@ endif
 # SDL support
 ####
 # SDL2_CONFIG, SDL2_CFLAGS and SDL2_LIBS can be set on the command line,
-# for a static SDL or a cross build (see release/).
+# for a static SDL or a cross build.
 ifeq ($(ENABLE_SDL),yes)
 	SDL2_CONFIG	?=	sdl2-config
 	SDL2_CFLAGS	?=	$(shell $(SDL2_CONFIG) --cflags)
@@ -304,6 +301,11 @@ ifeq ($(SLIRP),yes)
 	SLIRP_LIBS	?=	$(shell $(PKG_CONFIG) --libs slirp)
 	CFLAGS		+=	$(SLIRP_CFLAGS) -DHAVE_SLIRP
 	LIBLNK		+=	$(SLIRP_LIBS)
+ifeq ($(strip $(PLATFORM)),win32)
+	# winsock: WSAPoll and inet_pton are Windows Vista and up
+	CFLAGS		+=	-D_WIN32_WINNT=0x0600
+	LIBLNK		+=	-lws2_32 -liphlpapi
+endif
 endif
 
 
@@ -334,7 +336,7 @@ endif
 ####
 # targets
 ####
-.PHONY:	default all update-revision versionheader clean-versioninfo init cleandep clean tidy
+.PHONY:	default all test update-revision versionheader clean-versioninfo init cleandep clean tidy
 
 all:	update-revision
 	@$(MAKE) versionheader
@@ -400,6 +402,11 @@ init:
 # remove the dependency files
 cleandep:
 	-rm $(DEPFILES)
+
+# unit tests (with the host compiler: HOSTCC, or else cc)
+test:
+	$(or $(HOSTCC),cc) -Wall -Wextra -o tests/netfix_test tests/netfix_test.c src/netfix.c
+	./tests/netfix_test
 
 # remove the dependency files and any target or intermediate build files
 clean:	cleandep clean-versioninfo

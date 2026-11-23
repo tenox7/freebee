@@ -7,7 +7,7 @@
  * keyboard. So FreeBee does what "kill -9" would do:
  *
  * - The window that has the keyboard is keywp, in the window driver (see
- *   wheel.c). Its tty's t_pgrp is the process group of the window's
+ *   keywin.c). Its tty's t_pgrp is the process group of the window's
  *   program: the Office starts each program in a group of its own.
  * - FreeBee calls the kernel's own signal(pgrp, SIGKILL), as the tty driver
  *   does with SIGINT when Del is typed. It calls it the way an interrupt
@@ -36,7 +36,7 @@
 #include <string.h>
 #include "musashi/m68k.h"
 #include "memory.h"
-#include "wheel.h"
+#include "keywin.h"
 #include "fbmcp.h"
 #include "closeapp.h"
 
@@ -77,8 +77,7 @@ static const uint16_t signal_code[] = {
 #define U_PROCP		0xA6		// struct proc *
 #define U_COMM		0x25A		// char[DIRSIZ]
 #define DIRSIZ		14
-// struct windef (sys/wd.h) w_tp, struct tty (sys/tty.h) t_pgrp
-#define W_TP		32
+// struct tty (sys/tty.h) t_pgrp
 #define T_PGRP		64
 
 #define SIGKILL		9
@@ -145,11 +144,10 @@ static bool find_signal(void)
 // the process group of the program in the window that has the keyboard
 static int front_pgrp(void)
 {
-	uint32_t const kw = wheel_keywp();
-	uint32_t wp, tp;
+	uint32_t const wp = keywin_window();
+	uint32_t tp;
 	uint16_t pg;
-	if (!kw || !peek32(kw, &wp) || !kernel_ptr(wp) ||
-			!peek32(wp + W_TP, &tp) || !kernel_ptr(tp) ||
+	if (!wp || !peek32(wp + WD_TP, &tp) || !kernel_ptr(tp) ||
 			!mem_peek16(tp + T_PGRP, &pg))
 		return 0;
 	return (int16_t)pg;

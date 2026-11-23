@@ -9,7 +9,7 @@
 #include "memory.h"
 #include "i8274.h"
 #include "dialer.h"
-#include "enet.h"
+#include "expcard.h"
 
 // Memory access debugging options, to reduce logspam
 #undef MEM_DEBUG_PAGEFAULTS
@@ -705,8 +705,8 @@ void IoWrite(uint32_t address, uint32_t data, int bits)/*{{{*/
 					case 0xD40000:		// Expansion slot 5
 					case 0xD80000:		// Expansion slot 6
 					case 0xDC0000:		// Expansion slot 7
-						if (enet_window(address))
-							enet_write(address, data, bits);
+						if (expcard_present(address))
+							expcard_write(address, data, bits);
 						else if ((address & 0x3FFF8) == 0x3FFF8)	// Software reset
 							LOG("Expansion slot %i: Reset", ((address >> 18) & 7));
 						else
@@ -974,8 +974,8 @@ uint32_t IoRead(uint32_t address, int bits)/*{{{*/
 						// 0x3FFFB: Board ID MSB, 0X3FFF9: Board ID LSB
 						// 0x3FFFF: Two's complement of ID MSB, 0x3FFFD: Two's complement of ID LSB
 						// low byte of 0x3FFFB + 0x3FFFF and 0x3FFF9 + 0x3FFFD should equal 0
-						if (enet_window(address))
-							return enet_read(address, bits);
+						if (expcard_present(address))
+							return expcard_read(address, bits);
 						fprintf(stderr, "NOTE: RD%d from expansion card space, addr=0x%08X\n", bits, address);
 						handled = true;
 						break;
@@ -1266,9 +1266,12 @@ static void ram_write_16(uint32_t address, uint32_t value)/*{{{*/
 }
 
 /*
- * Bus master access for expansion cards (the Ethernet board's LANCE): a
- * word at a logical address, through the page map as for disk DMA. False
- * if the page is not present.
+ * Guest memory for the emulator's own devices and helpers.
+ *
+ * mem_dma_read16 and mem_dma_write16 are bus master access (as an
+ * expansion card does it): a word at a logical address, through the page
+ * map as for disk DMA, so the page's accessed and dirty bits are set.
+ * False if the page is not present.
  */
 bool mem_dma_read16(uint32_t logical, uint16_t *data)
 {
@@ -1291,7 +1294,8 @@ bool mem_dma_write16(uint32_t logical, uint16_t data, uint16_t mem_mask)
 	return true;
 }
 
-// The same read for the emulator's own look: the page bits stay as they are
+// A look at a word through the page map that changes nothing: the page's
+// bits stay as they are. False if the page is not present.
 bool mem_peek16(uint32_t logical, uint16_t *data)
 {
 	logical &= ~1;
@@ -1304,6 +1308,7 @@ bool mem_peek16(uint32_t logical, uint16_t *data)
 	return true;
 }
 
+// A word of RAM at a physical address. False if there is no RAM there.
 bool mem_peek_phys16(uint32_t phys, uint16_t *data)
 {
 	phys &= ~1;

@@ -118,11 +118,13 @@ get_default_bool(const char *heading, const char *item)
 		bool value;
 	} defaults[] = {
 		{ "vidpal", "installed", true },
-		{ "mcp", "enabled", true },
+		{ "modem", "present", true },
 		{ "cpu", "idle", true },
 		{ "mouse", "seamless", true },
-		{ "modem", "present", true },
+		{ "mcp", "enabled", true },
 		{ "network", "emu", true },
+		{ "network", "fix_telnet_status", true },
+		{ "network", "fix_ftp_port", true },
 		{ NULL, NULL, false }
 	};
 

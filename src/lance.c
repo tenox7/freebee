@@ -53,7 +53,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <zlib.h>
 #include "lance.h"
 
 #define CSR0_INIT	LANCE_CSR0_INIT
@@ -117,10 +116,23 @@
 
 static const uint8_t ETH_BROADCAST[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
-// The Ethernet FCS, the same CRC-32 as zlib's (and MAME's crc32_creator)
+// The Ethernet FCS: CRC-32 (IEEE 802.3, reflected, as zlib's crc32() and
+// MAME's crc32_creator)
 static uint32_t fcs(const uint8_t *buf, int length)
 {
-	return (uint32_t)crc32(0L, buf, (uInt)length);
+	static uint32_t table[256];
+	if (!table[1]) {
+		for (uint32_t n = 0; n < 256; n++) {
+			uint32_t c = n;
+			for (int k = 0; k < 8; k++)
+				c = (c & 1) ? 0xedb88320u ^ (c >> 1) : c >> 1;
+			table[n] = c;
+		}
+	}
+	uint32_t crc = 0xffffffffu;
+	for (int i = 0; i < length; i++)
+		crc = table[(crc ^ buf[i]) & 0xff] ^ (crc >> 8);
+	return crc ^ 0xffffffffu;
 }
 
 static void put_u16le(uint8_t *p, uint16_t v) { p[0] = v & 0xff; p[1] = v >> 8; }

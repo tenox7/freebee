@@ -173,8 +173,8 @@ void keyboard_init(KEYBOARD_STATE *ks)
 
 	ks->mouse_enabled = 0;
 	ks->lastdata_mouse = 0;
-	ks->mouse_left = 0;
 	memset(ks->host_down, 0, sizeof(ks->host_down));
+	ks->mouse_left = 0;
 }
 
 // The 3B1 scan code for host key k, or -1. Alt changes only the keys that

@@ -80,6 +80,10 @@ typedef struct {
 } recorder;
 
 static pthread_mutex_t rec_mu = PTHREAD_MUTEX_INITIALIZER;
+// One record action at a time (tool calls run in threads of their own):
+// without it, "record status" could read the recorder while "record stop"
+// frees it. rec_finish takes it too.
+static pthread_mutex_t rec_ctl_mu = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t rec_cv = PTHREAD_COND_INITIALIZER;
 static recorder *rec;
 static volatile bool rec_on;		// main thread hands frames over
@@ -826,25 +830,28 @@ bool tool_record(call *c, const json *args)
 		call_error(c, "action must be start, mark, status or stop");
 		return false;
 	}
+	bool ok = true;
+	pthread_mutex_lock(&rec_ctl_mu);
 	switch (act) {
-	case 0: return rec_start(c, args);
-	case 1: return rec_mark(c, args);
+	case 0: ok = rec_start(c, args); break;
+	case 1: ok = rec_mark(c, args); break;
 	case 2:
-		if (!rec) {
+		if (!rec)
 			call_printf(c, "Not recording.");
-			return true;
-		}
-		rec_status(c);
-		return true;
-	default: return rec_stop(c);
+		else
+			rec_status(c);
+		break;
+	default: ok = rec_stop(c); break;
 	}
+	pthread_mutex_unlock(&rec_ctl_mu);
+	return ok;
 }
 
 void rec_finish(void)
 {
-	if (!rec)
-		return;
-	recorder *r = finish();
+	pthread_mutex_lock(&rec_ctl_mu);
+	recorder *r = rec ? finish() : NULL;
+	pthread_mutex_unlock(&rec_ctl_mu);
 	if (r) {
 		fprintf(stderr, "MCP: the recording %s.avi was finished as FreeBee quit (%llu frames)\n",
 			r->base, (unsigned long long)r->frames);

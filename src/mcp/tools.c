@@ -591,7 +591,7 @@ static bool tool_vm_info(call *c, const json *a)
 		r.floppy[0] ? r.floppy : "none (empty drive)");
 	call_printf(c, "Serial port tty000: pty %s (link %s); MCP serial tools reach it too\n",
 		pty[0] ? pty : "?", link ? link : "?");
-	call_printf(c, "Ethernet: %s\n", r.net[0] ? r.net : "no board ([network] enabled = false)");
+	call_printf(c, "Ethernet: %s\n", r.net[0] ? r.net : "no board (none in [expansion])");
 	call_printf(c, "Screen: 720x348, one bit%s; LEDs (red, green, yellow, red): %d%d%d%d\n",
 		s.frame.rev ? ", reverse video" : "",
 		s.leds & 1, (s.leds >> 1) & 1, (s.leds >> 2) & 1, (s.leds >> 3) & 1);

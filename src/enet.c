@@ -7,7 +7,8 @@
  * Ported to C for FreeBee from Visionik's AT&T 3B1 work in MAME,
  * github.com/visionik/mame, branch att-3b1 (commit 4ca77493, 2026-10-20):
  *  - src/mame/att/unixpc_enet.h and unixpc_slot.h: the board registers,
- *    the station address and the card identity bytes.
+ *    the station address and the card identity bytes (the identity bytes
+ *    and the card reset are in expcard.c, for every card).
  *    license:BSD-3-Clause, copyright-holders:Visionik (licence text below).
  *  - src/mame/att/unixpc_m.cpp, unixpc_enet_device: how the board answers
  *    the LANCE's interrupt, its register latch and its DMA through the page
@@ -74,22 +75,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include "enet.h"
+#include "expcard.h"
 #include "lance.h"
 #include "memory.h"
 #include "fbconfig.h"
 #ifdef HAVE_SLIRP
 #include "netslirp.h"
 #endif
-
-// Eight 256 KiB expansion I/O windows from 0xC00000. An empty window
-// reads 0xFF. The identity is on the odd bytes at the top of a window, and
-// a write anywhere in its last 8 bytes resets the card. (unixpc_slot.h)
-#define EXP_IO_BASE		0x00c00000
-#define EXP_IO_SIZE		0x00040000
-#define EXP_ID_LO		0x0003fff9
-#define EXP_ID_HI		0x0003fffb
-#define EXP_ID_LO_COMP		0x0003fffd
-#define EXP_ID_HI_COMP		0x0003ffff
 
 // The Ethernet driver asks the kernel's slot table for this id
 #define ENET_ID			0x1003
@@ -125,8 +117,8 @@ typedef struct {
 } FRAME;
 
 static struct {
+	EXPCARD card;			// first: the bus hands this back
 	bool present;
-	int slot;			// window 0-7
 	uint8_t mac[6];
 
 	// the board (Visionik's enet_board)
@@ -190,32 +182,8 @@ static void log_frame(const char *what, const uint8_t *f, int length)
 }
 
 /*
- * Card identity and station address (unixpc_slot.h, unixpc_enet.h)
+ * The station address PROM (unixpc_enet.h)
  */
-
-// Low byte of the identity word at this offset, or -1. The CPU samples the
-// odd addresses; a word read there still gets the byte in D7-D0.
-static int exp_id_byte(uint16_t id, uint32_t offset)
-{
-	uint8_t const lo = id & 0xff;
-	uint8_t const hi = id >> 8;
-	uint32_t const addr = offset | 1;
-
-	if (addr == EXP_ID_LO)
-		return lo;
-	if (addr == EXP_ID_HI)
-		return hi;
-	if (addr == EXP_ID_LO_COMP)
-		return (uint8_t)(0u - lo);
-	if (addr == EXP_ID_HI_COMP)
-		return (uint8_t)(0u - hi);
-	return -1;
-}
-
-static bool exp_reset_write(uint32_t offset)
-{
-	return (offset & ~(uint32_t)7) == EXP_ID_HI_COMP - 7;
-}
 
 // Octet 0 is at ENET_MAC0, the next ones 2 bytes lower each. Returns -1 if
 // this is not a station address byte.
@@ -353,9 +321,6 @@ static void board_reset(void)
 static uint16_t read16(uint32_t offset)
 {
 	bool open;
-	int const id = exp_id_byte(ENET_ID, offset);
-	if (id >= 0)
-		return 0xff00 | id;
 	int const octet = enet_mac_octet(offset);
 	if (octet >= 0)
 		return 0xff00 | enet.mac[octet];
@@ -384,13 +349,6 @@ static uint16_t read16(uint32_t offset)
 
 static void write16(uint32_t offset, uint16_t data)
 {
-	if (exp_reset_write(offset)) {
-		// The board reset also holds the LANCE in STOP, so CSR1-3 and INIT
-		// work
-		board_reset();
-		lance_reset(&enet.lance);
-		return;
-	}
 	switch (offset) {
 		case ENET_RDP:
 			lance_write(&enet.lance, 0, data);
@@ -413,16 +371,9 @@ static void write16(uint32_t offset, uint16_t data)
 	service();
 }
 
-bool enet_window(uint32_t address)
+static uint32_t card_read(EXPCARD *card, uint32_t offset, int bits)
 {
-	return enet.present &&
-		(address & 0xfc0000) == EXP_IO_BASE + (uint32_t)enet.slot * EXP_IO_SIZE;
-}
-
-uint32_t enet_read(uint32_t address, int bits)
-{
-	uint32_t const offset = address & (EXP_IO_SIZE - 1);
-
+	(void)card;
 	if (bits == 8) {
 		uint16_t const word = read16(offset & ~1);
 		return (offset & 1) ? (word & 0xff) : (word >> 8);
@@ -432,10 +383,9 @@ uint32_t enet_read(uint32_t address, int bits)
 	return ((uint32_t)read16(offset & ~1) << 16) | read16((offset + 2) & (EXP_IO_SIZE - 2));
 }
 
-void enet_write(uint32_t address, uint32_t data, int bits)
+static void card_write(EXPCARD *card, uint32_t offset, uint32_t data, int bits)
 {
-	uint32_t const offset = address & (EXP_IO_SIZE - 1);
-
+	(void)card;
 	if (bits == 8)
 		write16(offset & ~1, (offset & 1) ? (data & 0xff) : ((data & 0xff) << 8));
 	else if (bits == 16)
@@ -450,13 +400,11 @@ void enet_write(uint32_t address, uint32_t data, int bits)
  * Time passes
  */
 
-void enet_tick(uint32_t cycles)
+static void card_tick(EXPCARD *card, uint32_t cycles)
 {
 	LANCE *l = &enet.lance;
 
-	if (!enet.present)
-		return;
-
+	(void)card;
 	// transmit: on demand, and every 1.6 ms (the WIN/3B driver never sets
 	// TDMD: it relies on the poll); back to back while there are frames
 	enet.tx_poll_cycles += cycles;
@@ -488,8 +436,9 @@ void enet_tick(uint32_t cycles)
 	}
 }
 
-int enet_irq(void)
+static int card_irq(EXPCARD *card)
 {
+	(void)card;
 	if (!enet.irq)
 		return 0;
 
@@ -510,11 +459,6 @@ int enet_irq(void)
 	return (enet.control & ENET_INT1) ? 1 : 5;
 }
 
-bool enet_quiet(void)
-{
-	return !enet.present || (enet.rxq_count == 0 && !enet.lance.tx_demand);
-}
-
 /*
  * The host side
  */
@@ -533,8 +477,9 @@ void enet_host_receive(const uint8_t *frame, int length)
 	enet.rxq_count++;
 }
 
-void enet_host_poll(void)
+static void card_host_poll(EXPCARD *card)
 {
+	(void)card;
 #ifdef HAVE_SLIRP
 	if (enet.host)
 		netslirp_poll();
@@ -556,19 +501,17 @@ static bool parse_mac(const char *s, uint8_t mac[6])
 	return true;
 }
 
-void enet_init(void)
+static EXPCARD *card_create(int slot)
 {
+	if (enet.present) {
+		fprintf(stderr, "[expansion] slot%d: FreeBee has one Ethernet board, in slot %d; this slot stays empty\n",
+				slot, enet.card.slot);
+		return NULL;
+	}
 	memset(&enet, 0, sizeof(enet));
-	if (!fbc_get_bool("network", "enabled"))
-		return;
 	const char *debug = getenv("FREEBEE_ENET_DEBUG");
 	enet.debug = debug && *debug && strcmp(debug, "0");
 
-	enet.slot = fbc_get_int("network", "slot");
-	if (enet.slot < 0 || enet.slot > 7) {
-		fprintf(stderr, "[network] slot must be 0 to 7 (got %d); using 1\n", enet.slot);
-		enet.slot = 1;
-	}
 	const char *mac = fbc_get_string("network", "mac");
 	if (!parse_mac(mac, enet.mac)) {
 		fprintf(stderr, "[network] mac \"%s\" is not like 02:00:00:3b:00:01; using that\n", mac ? mac : "");
@@ -577,7 +520,7 @@ void enet_init(void)
 	enet.rxq = calloc(RXQ_LEN, sizeof(FRAME));
 	if (enet.rxq == NULL) {
 		fprintf(stderr, "enet: out of memory\n");
-		return;
+		return NULL;
 	}
 	lance_init(&enet.lance, NULL, dma_in, dma_out, lance_send);
 	board_reset();
@@ -596,22 +539,25 @@ void enet_init(void)
 		fprintf(stderr, "[network] backend must be slirp or none (got \"%s\"); the cable is unplugged\n", enet.backend);
 	}
 	printf("Ethernet board in slot %d (0x%06X), station %02x:%02x:%02x:%02x:%02x:%02x, %s\n",
-			enet.slot, EXP_IO_BASE + enet.slot * EXP_IO_SIZE,
+			slot, EXP_IO_BASE + slot * EXP_IO_SIZE,
 			enet.mac[0], enet.mac[1], enet.mac[2], enet.mac[3], enet.mac[4], enet.mac[5],
 			enet.host ? enet.backend : "no host network");
+	return &enet.card;
 }
 
-void enet_reset(void)
+// The machine's reset, or the card reset in the slot window. It also holds
+// the LANCE in STOP, so CSR1-3 and INIT work.
+static void card_reset(EXPCARD *card)
 {
-	if (!enet.present)
-		return;
+	(void)card;
 	board_reset();
 	lance_reset(&enet.lance);
 	enet.rxq_head = enet.rxq_count = 0;
 }
 
-void enet_done(void)
+static void card_destroy(EXPCARD *card)
 {
+	(void)card;
 #ifdef HAVE_SLIRP
 	if (enet.host)
 		netslirp_done();
@@ -622,15 +568,37 @@ void enet_done(void)
 	enet.present = false;
 }
 
+// nothing to take in or send: the idle skip may sleep
+static bool card_quiet(EXPCARD *card)
+{
+	(void)card;
+	return enet.rxq_count == 0 && !enet.lance.tx_demand;
+}
+
+// for MCP vm-info: the board, or NULL if there is none
 const char *enet_info(void)
 {
 	if (!enet.present)
 		return NULL;
 	snprintf(enet.info, sizeof(enet.info),
 			"slot %d, %02x:%02x:%02x:%02x:%02x:%02x, %s, %s; frames out %lu, in %lu, dropped %lu",
-			enet.slot, enet.mac[0], enet.mac[1], enet.mac[2], enet.mac[3], enet.mac[4], enet.mac[5],
+			enet.card.slot, enet.mac[0], enet.mac[1], enet.mac[2], enet.mac[3], enet.mac[4], enet.mac[5],
 			enet.host ? enet.backend : "no host network",
 			(enet.lance.csr[0] & LANCE_CSR0_RXON) ? "running" : "stopped",
 			enet.tx_frames, enet.rx_frames, enet.rx_dropped);
 	return enet.info;
 }
+
+const EXPCARD_TYPE enet_card = {
+	.name = "ethernet",
+	.id = ENET_ID,
+	.create = card_create,
+	.destroy = card_destroy,
+	.reset = card_reset,
+	.read = card_read,
+	.write = card_write,
+	.tick = card_tick,
+	.irq = card_irq,
+	.host_poll = card_host_poll,
+	.quiet = card_quiet,
+};

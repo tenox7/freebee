@@ -85,8 +85,12 @@ An optional image for the second hard disk.
 This disk is not mounted when the system boots; you can use it
 for whatever you want.
 .TP
-.I .freebee.toml [network]
-The Ethernet board, off by default: see
+.I .freebee.toml [expansion]
+The expansion cards, such as the Ethernet board
+.RB ( "slot1 = \(dqethernet\(dq" ),
+none by default; its settings are in
+.IR [network] .
+See
 .I README.md
 and
 .IR sample.freebee.toml .

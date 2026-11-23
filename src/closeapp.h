@@ -9,14 +9,14 @@
  * Office, the window manager or the status line.
  */
 
-/// main thread: close the program in the window that has the keyboard, as
+/// the machine was reset
+void closeapp_reset(void);
+/// what the last request did, for the control socket
+const char *closeapp_result(void);
+/// close the program in the window that has the keyboard, as
 /// soon as the CPU is at a safe place (within 2 seconds)
 void closeapp_request(void);
-/// main thread, at every 60 Hz tick, between instructions
+/// at every 60 Hz tick, between instructions
 void closeapp_tick(void);
-/// main thread: the machine was reset
-void closeapp_reset(void);
-/// what the last request did, for the log and the control socket
-const char *closeapp_result(void);
 
 #endif

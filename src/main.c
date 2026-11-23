@@ -18,12 +18,12 @@
 #include "lightbar.c"
 #include "i8274.h"
 #include "dialer.h"
-#include "control.h"
-#include "fbmcp.h"
-#include "enet.h"
 #include "pointer.h"
 #include "wheel.h"
 #include "closeapp.h"
+#include "expcard.h"
+#include "control.h"
+#include "fbmcp.h"
 
 extern int cpu_log_enabled;
 
@@ -41,6 +41,9 @@ static int load_fd_path(const char *discim)
 {
 	int writeable = 1;
 
+	// disk = "" in [floppy]: the drive stays empty, with no error
+	if (!discim || !*discim)
+		return (0);
 	state.fdc_disc = fopen(discim, "r+b");
 	if (!state.fdc_disc){
 		writeable = 0;
@@ -52,7 +55,7 @@ static int load_fd_path(const char *discim)
 		return (0);
 	}else{
 		if (wd2797_load(&state.fdc_ctx, state.fdc_disc, 512, 2, 40, writeable) != WD2797_ERR_OK) {
-			fprintf(stderr, "ERROR: floppy image '%s' has a geometry FreeBee does not know.\n", discim);
+			fprintf(stderr, "ERROR: floppy image '%s' is too small, or of a geometry FreeBee does not know.\n", discim);
 			fclose(state.fdc_disc);
 			state.fdc_disc = NULL;
 			return (0);
@@ -65,12 +68,7 @@ static int load_fd_path(const char *discim)
 
 static int load_fd()
 {
-	const char *p = fbc_get_string("floppy", "disk");
-
-	// disk = "" in [floppy]: the drive stays empty, with no error
-	if (!p || !*p)
-		return 0;
-	return load_fd_path(p);
+	return load_fd_path(fbc_get_string("floppy", "disk"));
 }
 
 // for the control socket
@@ -148,7 +146,7 @@ void freebee_reset(void)
 	closeapp_reset();
 	wd2797_reset(&state.fdc_ctx);
 	wd2010_reset(&state.hdc_ctx);
-	enet_reset();
+	expcard_reset();
 	m68k_set_irq(0);
 	m68k_pulse_reset();
 	printf("Reset.\n");
@@ -180,7 +178,7 @@ static int load_hd()
 		}
 	}
 
-	// disk2 = "": no second disk, with no error
+	// disk2 = "" in [hard_disk]: no second disk, with no error
 	state.hdc_disc1 = NULL;
 	if (!disk2 || !*disk2)
 		return ret;
@@ -345,8 +343,6 @@ void refreshStatusBar(SDL_Renderer *r, SDL_Texture *lightbar_tex)
 // - grab: F10 grabs the mouse: the host pointer goes away and its moves go
 //   to the 3B1 as they are. F10 again lets it go.
 static bool mouse_grabbed, mouse_seamless, cursor_hidden;
-// F9 went down with Alt: Alt-F9, not Suspd
-static bool closeapp_key_down;
 static int mouse_buttons;
 // window pixels per screen pixel
 static float win_scale_x = 1, win_scale_y = 1;
@@ -384,6 +380,8 @@ static void track_host_pointer(int wx, int wy)
  */
 bool HandleSDLEvents(SDL_Window *window)
 {
+	// F9 went down with Alt: Alt-F9, not Suspd
+	static bool closeapp_key_down;
 	SDL_Event event;
 	int dx = 0, dy = 0;
 
@@ -662,10 +660,9 @@ int main(int argc, char *argv[])
 
 	load_hd();
 
-	// Ethernet board (optional): [network] enabled = true
-	enet_init();
-
-	// Scripting socket (optional)
+	// Expansion cards: [expansion] slot0 to slot7
+	expcard_init();
+	// the control socket ([control] socket, or FREEBEE_CONTROL)
 	control_init();
 
 	// MCP server (on unless [mcp] enabled = false or FREEBEE_MCP=0)
@@ -683,18 +680,24 @@ int main(int argc, char *argv[])
 	const uint32_t NUM_CPU_TIMESLOTS = 500;
 	uint32_t next_timeslot = SDL_GetTicks() + MILLISECS_PER_TIMESLOT;
 	uint32_t clock_cycles = 0, cycles_run;
-	uint32_t last_turbo = 1;
-	uint32_t net_slices = 0, last_net_poll = 0;
 
+	// [cpu] turbo: the CPU runs that many times as fast as a real 3B1's.
+	// Each time slot runs turbo times as many cycles, and the 60Hz tick
+	// comes every turbo times as many cycles, so the clock stays real.
+	// The control socket and MCP can change it (control_turbo).
 	control_turbo = fbc_get_int("cpu", "turbo");
 	if (control_turbo < 1 || control_turbo > TURBO_MAX) {
 		fprintf(stderr, "[cpu] turbo must be 1 to %d (got %d); using 1\n", TURBO_MAX, control_turbo);
 		control_turbo = 1;
 	}
-	// [cpu] idle: the idle skip (see the end of the slice loop)
-	bool const idle_skip = fbc_get_bool("cpu", "idle");
+	if (control_turbo > 1)
+		printf("Turbo: the CPU runs %d times as fast as a real 3B1 (%d MHz)\n", control_turbo, control_turbo * 10);
+	uint32_t last_turbo = 1;
+	// [cpu] idle: the idle skip, not at max speed
+	bool const idle_skip = state.idle_skip;
 	uint64_t idle_skipped = 0, idle_total = 0;
 	uint32_t idle_slots = 0;
+	uint32_t card_slices = 0, last_host_poll = 0;
 	bool exitEmu = false;
 	uint8_t last_leds = 255;
 
@@ -728,13 +731,15 @@ int main(int argc, char *argv[])
 		// Turbo: run the CPU that many times as fast, and stretch the 60Hz
 		// tick by as much, so the clock stays real. At max speed it is moot:
 		// the tick then comes as often as it can, and guest time races.
-		uint32_t turbo = control_speed_max ? 1 : (uint32_t)control_turbo;
+		uint32_t const turbo = control_speed_max ? 1 : (uint32_t)control_turbo;
 		if (turbo != last_turbo) {
 			clock_cycles = (uint32_t)((uint64_t)clock_cycles * turbo / last_turbo);
 			last_turbo = turbo;
 		}
+		// the CPU cycles in this time slot
+		uint32_t const slot_cycles = CYCLES_PER_TIMESLOT * turbo;
 		state.idle_skip = idle_skip && !control_speed_max;
-		for (i = 0; i < CYCLES_PER_TIMESLOT * turbo; i += cycles_run){
+		for (i = 0; i < slot_cycles; i += cycles_run){
 			// Run the CPU for however many cycles we need to. CPU core clock is
 			// 10MHz, and we're running at 240Hz/timeslot. Thus: 10e6/240 or
 			// 41667 cycles per timeslot.
@@ -744,14 +749,14 @@ int main(int argc, char *argv[])
 			if (fbmcp_cpu_stopped())
 				break;
 
-			// Ethernet board: transmit poll, receive; the host network
-			// about every millisecond
-			enet_tick(cycles_run);
-			if ((++net_slices & 15) == 0) {
+			// Expansion cards; their host side (the network) about every
+			// millisecond
+			expcard_tick(cycles_run);
+			if ((++card_slices & 15) == 0) {
 				uint32_t const ms = SDL_GetTicks();
-				if (ms != last_net_poll) {
-					last_net_poll = ms;
-					enet_host_poll();
+				if (ms != last_host_poll) {
+					last_host_poll = ms;
+					expcard_host_poll();
 				}
 			}
 
@@ -855,13 +860,13 @@ int main(int argc, char *argv[])
 			//
 			// TODO: MCR2.F_MASK (0x0400) masks the floppy interrupt
 			//
-			// The Ethernet board asks for level 1, or 5 if the driver
-			// picks that (5 is the expansion slots' other level).
-			int const enet_level = enet_irq();
+			// An expansion card asks for level 5 or 1, the expansion bus's
+			// two levels.
+			int const card_level = expcard_irq();
 			int irq = 0;
 			if (state.timer_int_latch) {
 				irq = 6;
-			} else if (enet_level == 5) {
+			} else if (card_level == 5) {
 				irq = 5;
 			} else if (i8274_get_irq(&state.serial_ctx)) {
 				irq = 4;
@@ -869,7 +874,7 @@ int main(int argc, char *argv[])
 				irq = 3;
 			} else if (wd2797_get_irq(&state.fdc_ctx) || wd2010_get_irq(&state.hdc_ctx)) {
 				irq = 2;
-			} else if (enet_level == 1) {
+			} else if (card_level == 1) {
 				irq = 1;
 			}
 			m68k_set_irq(irq);
@@ -878,27 +883,26 @@ int main(int argc, char *argv[])
 			// has gone round IDLE_PASSES times with nothing to do, and
 			// memory.c stopped the CPU at its top (the MCR write). With no
 			// interrupt to take, no disk or floppy transfer waiting and
-			// nothing for the Ethernet board, the CPU would only go round it
-			// until the next interrupt. So count the rest of the time slot
-			// as run (the 60Hz clock stays right), and sleep instead. Not at
-			// max speed: guest time would race even more.
+			// nothing for an expansion card to do, the CPU would only go
+			// round it until the next interrupt. So count the rest of the
+			// time slot as run (the 60Hz clock stays right), and sleep
+			// instead. Not at max speed: guest time would race even more.
 			if (state.idle_hint) {
 				state.idle_hint = false;
 				if (state.idle_skip && irq == 0 &&
 						!wd2010_get_drq(&state.hdc_ctx) && !wd2797_get_drq(&state.fdc_ctx)) {
-					// frames from the host that came in meanwhile
+					// frames from the host network that came in meanwhile
 					uint32_t const ms = SDL_GetTicks();
-					if (ms != last_net_poll) {
-						last_net_poll = ms;
-						enet_host_poll();
+					if (ms != last_host_poll) {
+						last_host_poll = ms;
+						expcard_host_poll();
 					}
-					if (enet_quiet()) {
-						uint32_t const total = CYCLES_PER_TIMESLOT * turbo;
+					if (expcard_quiet()) {
 						uint32_t const done = i + cycles_run;
-						if (done < total) {
-							clock_cycles += total - done;
-							enet_tick(total - done);
-							idle_skipped += total - done;
+						if (done < slot_cycles) {
+							clock_cycles += slot_cycles - done;
+							expcard_tick(slot_cycles - done);
+							idle_skipped += slot_cycles - done;
 						}
 						break;
 					}
@@ -907,7 +911,7 @@ int main(int argc, char *argv[])
 		}
 		// How much of each second the idle skip took off the CPU (the
 		// control socket's status, MCP's vm-info)
-		idle_total += CYCLES_PER_TIMESLOT * turbo;
+		idle_total += slot_cycles;
 		if (++idle_slots >= TIMESLOT_FREQUENCY) {
 			control_idle_pct = (int)(idle_skipped * 100 / idle_total);
 			idle_skipped = idle_total = 0;
@@ -939,10 +943,8 @@ int main(int argc, char *argv[])
 			if (state.timer_clrsint) {
 				state.timer_int_latch = true;
 			}
-			// control socket: commands, typed keys
+			// control socket commands, and the keys it queued
 			control_tick();
-			if (control_quit)
-				exitEmu = true;
 			// MCP: the screen for tools and recordings, mouse packets, calls
 			fbmcp_tick(vram_changed);
 			if (fbmcp_quit())
@@ -951,6 +953,7 @@ int main(int argc, char *argv[])
 				freebee_reset();
 			// the mouse: the seamless pointer, the kernel's copy of its place
 			pointer_tick();
+			// the mouse wheel: Roll keys
 			wheel_tick();
 			// Alt-F9: close the program in the front window
 			closeapp_tick();
@@ -963,7 +966,7 @@ int main(int argc, char *argv[])
 		}
 
 		// handle SDL events -- returns true if we need to exit
-		if (HandleSDLEvents(window))
+		if (HandleSDLEvents(window) || control_quit)
 			exitEmu = true;
 
 		// make sure frame rate is equal to real time
@@ -997,7 +1000,7 @@ int main(int argc, char *argv[])
 	fbmcp_done();
 	dialer_done();
 	control_done();
-	enet_done();
+	expcard_done();
 
 	// Clean up SDL
 	SDL_DestroyTexture(lightbarTexture);

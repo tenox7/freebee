@@ -60,7 +60,7 @@ typedef struct {
 
 	/// The idle skip: the MCR write in memory.c finds the kernel's idle
 	/// loop, the slice loop in main.c skips it
-	bool		idle_skip;			///< on: [cpu] idle, and not at max speed
+	bool		idle_skip;			///< on: [cpu] idle
 	uint32_t	idle_pc;			///< where the idle loop writes the MCR
 	uint32_t	idle_passes;		///< how many passes it has made since
 	bool		idle_hint;			///< it has made enough, and stopped the CPU

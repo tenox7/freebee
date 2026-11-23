@@ -41,12 +41,11 @@ typedef struct {
 	/// Flag indicating whether last data sent was from the mouse
 	bool lastdata_mouse;
 
-	/// Bytes the guest must read before it has every mouse packet
-	size_t mouse_left;
-
 	/// The 3B1 key that each host key pressed, by SDL scan code: its
 	/// scan code + 1, 0 for none. The key-up lets go of that key.
 	uint8_t host_down[SDL_NUM_SCANCODES];
+	/// Bytes the guest must read before it has every mouse packet
+	size_t mouse_left;
 } KEYBOARD_STATE;
 
 /**

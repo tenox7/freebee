@@ -43,7 +43,6 @@
 	# takes little of the host's CPU. The time of day stays right. It is
 	# off at max speed.
 	idle = true
-
 [mouse]
 	# true: the seamless mouse. Over the window, the 3B1's pointer follows
 	# the host's, and the host's pointer hides there. There is no grab.
@@ -60,27 +59,50 @@
 	# it finds the modem: with false, the 3B1 never beeps.
 	present = true
 
-[control]
-	socket = "freebee.sock"		# commands over a Unix socket (optional)
-
-[mcp]
-	# The MCP server for AI agents: see MCP.md. FREEBEE_MCP=0 turns it off.
-	enabled = true
-	name = "myvm"			# the VM's name for the tools (default: the folder's name)
+[expansion]
+	# The cards in the expansion slots, by slot (slot0 to slot7). Cards:
+	# "ethernet", the AT&T 3B1 Ethernet board (see [network]).
+	#slot1 = "ethernet"
+	# (The older "[network] enabled = true" still works: it puts the board
+	# in [network] slot, 1 by default.)
 
 [network]
-	# The Ethernet board (AT&T's, with an AMD LANCE) in an expansion slot,
-	# for the Wollongong WIN/3B TCP/IP software. See README.md.
-	enabled = false
-	slot = 1			# expansion slot 0-7
-	mac = "02:00:00:3b:00:01"	# give each VM its own
-	# "slirp": user mode network, as in QEMU's -netdev user. The 3B1 is
-	# 10.0.2.15, the host 10.0.2.2. "none": the cable is unplugged.
+	# The Ethernet board's station address
+	mac = "02:00:00:3b:00:01"
+	# The host side: "slirp" (user mode networking, NAT, as in QEMU) or
+	# "none" (no cable). The 3B1 is 10.0.2.15, the host 10.0.2.2, DNS
+	# 10.0.2.3.
 	backend = "slirp"
-	# Host ports that go to the 3B1, as in QEMU:
-	# "[tcp:|udp:][hostaddr]:hostport-[guestaddr]:guestport", comma separated
-	hostfwd = "tcp:127.0.0.1:2323-:23, tcp:127.0.0.1:2121-:21"
-	emu = true			# slirp's FTP helper for the 3B1's ftp client
+	# Host ports that go to the 3B1, comma separated, as in QEMU:
+	# [tcp:|udp:][hostaddr]:hostport-[guestaddr]:guestport
+	hostfwd = "tcp:127.0.0.1:2323-:23"
+	# libslirp's helpers for old protocols through NAT (they rewrite the
+	# guest's FTP PORT commands, for the 3B1's ftp, which has no passive
+	# mode). On by default.
+	emu = true
+	# Fixes for 1986 programs, in the frames to the 3B1 (src/netfix.c).
+	# fix_telnet_status: telnet out of the 3B1 to a server that offers
+	# STATUS (most do now) fills the screen with "STATUS IS"; this makes
+	# the server's WILL/DO STATUS a WONT/DONT.
+	# fix_ftp_port: an FTP client on the host's loopback tells the 3B1's
+	# ftpd (active mode only) to connect to 127.0.0.1; this makes it
+	# 10.0.2.2, the host as the 3B1 sees it.
+	# Both on by default; false passes every frame as it is.
+	fix_telnet_status = true
+	fix_ftp_port = true
+
+[control]
+	# A Unix socket for scripts (not on Windows): one command a line, such
+	# as "type root\n", "floppy disk.img", "screenshot s.png", "speed max".
+	# See src/control.c. Off unless set here or in FREEBEE_CONTROL.
+	#socket = "freebee.sock"
+
+[mcp]
+	# The MCP server, for AI agents (see MCP.md). Anyone who can use its
+	# socket, in /tmp/freebee-<uid>/, can control the VM. On by default;
+	# FREEBEE_MCP=0 turns it off too.
+	enabled = true
+	#name = "myvm"			# the VM's name for the tools (default: the folder's name)
 
 [beeper]
 	# Volume of the dialer's tone output, 0-100. This covers the system beep

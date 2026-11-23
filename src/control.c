@@ -246,32 +246,54 @@ static bool save_png(const char *path)
 #define MAXCLIENTS 8
 static int listen_fd = -1;
 static char *sock_path;
+// A client's replies wait in out until the socket takes them: the main
+// loop never waits for a client. A client that lets OUT_MAX bytes of
+// replies pile up is dropped.
+#define OUT_MAX 65536
 static struct client {
 	int fd;
 	char buf[8192];
 	int len;
+	char out[OUT_MAX];
+	int out_len;
+	bool drop;
 } clients[MAXCLIENTS];
+
+static void client_close(struct client *c)
+{
+	close(c->fd);
+	c->fd = -1;
+}
+
+// send what the socket takes now; false if the client is gone
+static bool flush_out(struct client *c)
+{
+	while (c->out_len > 0) {
+		ssize_t w = write(c->fd, c->out, c->out_len);
+		if (w > 0) {
+			memmove(c->out, c->out + w, c->out_len - w);
+			c->out_len -= w;
+			continue;
+		}
+		if (w < 0 && errno == EINTR)
+			continue;
+		return w < 0 && (errno == EAGAIN || errno == EWOULDBLOCK);
+	}
+	return true;
+}
 
 static void reply(struct client *c, const char *msg)
 {
-	size_t n = strlen(msg);
-	char *out = malloc(n + 2);
-	if (!out)
+	size_t const n = strlen(msg);
+	if (c->drop)
 		return;
-	memcpy(out, msg, n);
-	out[n++] = '\n';
-	size_t off = 0;
-	while (off < n) {
-		ssize_t w = write(c->fd, out + off, n - off);
-		if (w > 0) {
-			off += w;
-			continue;
-		}
-		if (w < 0 && (errno == EAGAIN || errno == EINTR))
-			continue;
-		break;
+	if (c->out_len + n + 1 > sizeof(c->out)) {
+		c->drop = true;		// it does not read its replies
+		return;
 	}
-	free(out);
+	memcpy(c->out + c->out_len, msg, n);
+	c->out[c->out_len + n] = '\n';
+	c->out_len += n + 1;
 }
 
 static void command(struct client *c, char *line)
@@ -464,6 +486,8 @@ static void poll_socket(void)
 		fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
 		clients[i].fd = fd;
 		clients[i].len = 0;
+		clients[i].out_len = 0;
+		clients[i].drop = false;
 	}
 	for (int i = 0; i < MAXCLIENTS; i++) {
 		struct client *c = &clients[i];
@@ -490,10 +514,17 @@ static void poll_socket(void)
 				continue;
 			}
 			if (n == 0 || (errno != EAGAIN && errno != EINTR)) {
-				close(c->fd);
-				c->fd = -1;
+				// the client is done: the replies it has not got yet go
+				// now, as far as the socket takes them
+				flush_out(c);
+				client_close(c);
 			}
 			break;
+		}
+		if (c->fd >= 0 && (c->drop || !flush_out(c))) {
+			if (c->drop)
+				fprintf(stderr, "control: a client did not read its replies; it was dropped\n");
+			client_close(c);
 		}
 	}
 }
